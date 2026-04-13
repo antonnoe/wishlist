@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { WishlistItem, PLATFORM_LABELS, STATUS_LABELS, STATUS_COLORS, Platform, Status } from '@/lib/types';
+import { WishlistItem, PlatformItem, STATUS_LABELS, STATUS_COLORS, Status } from '@/lib/types';
 import ReactMarkdown from 'react-markdown';
 
 export default function Home() {
   const [items, setItems] = useState<WishlistItem[]>([]);
+  const [platforms, setPlatforms] = useState<PlatformItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterPlatform, setFilterPlatform] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formPlatform, setFormPlatform] = useState<Platform>('overig');
+  const [formPlatform, setFormPlatform] = useState<string>('overig');
   const [submitting, setSubmitting] = useState(false);
   const [userId] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -26,21 +27,33 @@ export default function Home() {
     return 'anonymous';
   });
 
-  async function fetchItems() {
+  // Build platform label lookup
+  const platformLabels: Record<string, string> = {};
+  platforms.forEach(p => { platformLabels[p.id] = p.label; });
+
+  // Visible platforms for dropdown (grouped)
+  const topLevel = platforms.filter(p => !p.parent_id && p.visible);
+  const visibleChildren = (parentId: string) =>
+    platforms.filter(p => p.parent_id === parentId && p.visible);
+
+  async function fetchData() {
     try {
-      const res = await fetch('/api/wishlist?visibility=public');
-      const data = await res.json();
-      setItems(Array.isArray(data) ? data : []);
+      const [itemsRes, platformsRes] = await Promise.all([
+        fetch('/api/wishlist?visibility=public'),
+        fetch('/api/platforms'),
+      ]);
+      const itemsData = await itemsRes.json();
+      const platformsData = await platformsRes.json();
+      setItems(Array.isArray(itemsData) ? itemsData : []);
+      setPlatforms(Array.isArray(platformsData) ? platformsData : []);
     } catch (e) {
-      console.error('Failed to fetch items:', e);
+      console.error('Failed to fetch:', e);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   async function handleVote(itemId: string) {
     const res = await fetch('/api/wishlist/vote', {
@@ -48,16 +61,12 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ wishlist_id: itemId, user_id: userId }),
     });
-    if (res.ok) {
-      fetchItems();
-    }
+    if (res.ok) fetchData();
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!formTitle.trim()) return;
     setSubmitting(true);
-
     try {
       const res = await fetch('/api/wishlist', {
         method: 'POST',
@@ -74,27 +83,30 @@ export default function Home() {
         setFormDescription('');
         setFormPlatform('overig');
         setShowForm(false);
-        fetchItems();
+        fetchData();
       }
-    } catch (e) {
-      console.error('Failed to submit:', e);
     } finally {
       setSubmitting(false);
     }
   }
 
   const filtered = items.filter((item) => {
-    if (filterPlatform !== 'all' && item.platform !== filterPlatform) return false;
+    if (filterPlatform !== 'all') {
+      // Match exact or parent
+      if (item.platform !== filterPlatform && !item.platform.startsWith(filterPlatform + '.')) return false;
+    }
     if (filterStatus !== 'all' && item.status !== filterStatus) return false;
     return true;
   });
 
-  const platforms = Object.keys(PLATFORM_LABELS) as Platform[];
   const statuses = Object.keys(STATUS_LABELS) as Status[];
+
+  function getPlatformLabel(id: string): string {
+    return platformLabels[id] || id;
+  }
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      {/* Header */}
       <header className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <div className="max-w-3xl mx-auto px-4 py-6">
           <h1 className="text-2xl mb-1">Boîte à idées</h1>
@@ -105,8 +117,8 @@ export default function Home() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6">
-        {/* Filters + New button */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
+          {/* Platform filter - grouped */}
           <select
             value={filterPlatform}
             onChange={(e) => setFilterPlatform(e.target.value)}
@@ -114,9 +126,19 @@ export default function Home() {
             style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
           >
             <option value="all">Alle platforms</option>
-            {platforms.map((p) => (
-              <option key={p} value={p}>{PLATFORM_LABELS[p]}</option>
-            ))}
+            {topLevel.map((p) => {
+              const children = visibleChildren(p.id);
+              return [
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>,
+                ...children.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    &nbsp;&nbsp;↳ {c.label}
+                  </option>
+                )),
+              ];
+            })}
           </select>
 
           <select
@@ -142,72 +164,53 @@ export default function Home() {
 
         {/* Submit form */}
         {showForm && (
-          <div
-            className="rounded-lg border p-5 mb-6"
-            style={{ background: 'var(--bg-card)', borderColor: 'var(--primary-border)' }}
-          >
+          <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--bg-card)', borderColor: 'var(--primary-border)' }}>
             <h2 className="text-lg mb-4">Nieuw idee indienen</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                  Titel *
-                </label>
-                <input
-                  type="text"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Titel *</label>
+                <input type="text" value={formTitle} onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="Kort en duidelijk"
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
-                />
+                  className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                  Toelichting
-                </label>
-                <textarea
-                  value={formDescription}
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Toelichting</label>
+                <textarea value={formDescription}
                   onChange={(e) => {
                     const words = e.target.value.split(/\s+/).filter(Boolean);
                     if (words.length <= 150) setFormDescription(e.target.value);
                   }}
-                  placeholder="Optioneel: waarom is dit nuttig? (max 150 woorden)"
-                  rows={3}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
-                />
+                  placeholder="Optioneel: waarom is dit nuttig? (max 150 woorden)" rows={3}
+                  className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {formDescription.split(/\s+/).filter(Boolean).length}/150 woorden
                 </span>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                  Platform
-                </label>
-                <select
-                  value={formPlatform}
-                  onChange={(e) => setFormPlatform(e.target.value as Platform)}
-                  className="rounded-md border px-3 py-2 text-sm"
-                  style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
-                >
-                  {platforms.map((p) => (
-                    <option key={p} value={p}>{PLATFORM_LABELS[p]}</option>
-                  ))}
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Platform / Tool</label>
+                <select value={formPlatform} onChange={(e) => setFormPlatform(e.target.value)}
+                  className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
+                  {topLevel.map((p) => {
+                    const children = visibleChildren(p.id);
+                    return [
+                      <option key={p.id} value={p.id}>{p.label}</option>,
+                      ...children.map((c) => (
+                        <option key={c.id} value={c.id}>&nbsp;&nbsp;↳ {c.label}</option>
+                      )),
+                    ];
+                  })}
                 </select>
               </div>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !formTitle.trim()}
-                className="rounded-md px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}
-              >
+              <button onClick={handleSubmit} disabled={submitting || !formTitle.trim()}
+                className="rounded-md px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+                style={{ background: 'var(--primary)' }}>
                 {submitting ? 'Bezig...' : 'Indienen'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Items list */}
+        {/* Items */}
         {loading ? (
           <p style={{ color: 'var(--text-muted)' }}>Laden...</p>
         ) : filtered.length === 0 ? (
@@ -215,17 +218,11 @@ export default function Home() {
         ) : (
           <div className="space-y-3">
             {filtered.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-lg border p-4 flex gap-4 items-start"
-                style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
-              >
-                {/* Vote button */}
-                <button
-                  onClick={() => handleVote(item.id)}
+              <div key={item.id} className="rounded-lg border p-4 flex gap-4 items-start"
+                style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                <button onClick={() => handleVote(item.id)}
                   className="flex flex-col items-center min-w-[48px] pt-1 rounded-md transition-colors hover:bg-gray-50"
-                  title="Stem op dit idee"
-                >
+                  title="Stem op dit idee">
                   <svg width="20" height="12" viewBox="0 0 20 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M10 0L20 12H0L10 0Z" fill="var(--primary)" opacity="0.6" />
                   </svg>
@@ -234,16 +231,12 @@ export default function Home() {
                   </span>
                 </button>
 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <h3 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'Poppins, sans-serif' }}>
                       {item.title}
                     </h3>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[item.status]}`}
-                      style={{ fontFamily: 'Mulish, sans-serif' }}
-                    >
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[item.status]}`}>
                       {STATUS_LABELS[item.status]}
                     </span>
                   </div>
@@ -255,11 +248,9 @@ export default function Home() {
                   {(item.admin_note || item.url) && (
                     <AdminNote note={item.admin_note || null} url={item.url || null} />
                   )}
-                  <span
-                    className="text-xs px-2 py-0.5 rounded"
-                    style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}
-                  >
-                    {PLATFORM_LABELS[item.platform]}
+                  <span className="text-xs px-2 py-0.5 rounded"
+                    style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}>
+                    {getPlatformLabel(item.platform)}
                   </span>
                 </div>
               </div>
@@ -268,7 +259,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Subtle admin link */}
       <footer className="max-w-3xl mx-auto px-4 py-8 text-right">
         <a href="/admin" className="text-xs opacity-20 hover:opacity-60 transition-opacity" style={{ color: 'var(--text-muted)' }}>
           admin
@@ -282,19 +272,14 @@ function AdminNote({ note, url }: { note: string | null; url: string | null }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mb-2">
-      <button
-        onClick={() => setOpen(!open)}
-        className="text-xs font-medium flex items-center gap-1"
-        style={{ color: 'var(--primary)' }}
-      >
+      <button onClick={() => setOpen(!open)}
+        className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--primary)' }}>
         <span>{open ? '▾' : '▸'}</span>
         Reactie beheerder
       </button>
       {open && (
-        <div
-          className="mt-1 text-sm rounded-md p-3 prose-sm"
-          style={{ background: 'var(--primary-light)', color: 'var(--text)', borderLeft: '3px solid var(--primary)' }}
-        >
+        <div className="mt-1 text-sm rounded-md p-3 prose-sm"
+          style={{ background: 'var(--primary-light)', color: 'var(--text)', borderLeft: '3px solid var(--primary)' }}>
           {note && <ReactMarkdown>{note}</ReactMarkdown>}
           {url && (
             <a href={url} target="_blank" rel="noopener noreferrer"

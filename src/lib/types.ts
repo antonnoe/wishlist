@@ -1,12 +1,19 @@
-export type Platform = 'IF' | 'CC' | 'DF' | 'FK' | 'BH' | 'NLFR' | 'EP' | 'overig';
 export type Status = 'idee' | 'gepland' | 'bezig' | 'live' | 'verworpen';
 export type Visibility = 'public' | 'private';
+
+export interface PlatformItem {
+  id: string;
+  parent_id: string | null;
+  label: string;
+  sort_order: number;
+  visible: boolean;
+}
 
 export interface WishlistItem {
   id: string;
   title: string;
   description: string | null;
-  platform: Platform;
+  platform: string;
   status: Status;
   visibility: Visibility;
   upvotes: number;
@@ -17,17 +24,6 @@ export interface WishlistItem {
   url?: string | null;
   user_has_voted?: boolean;
 }
-
-export const PLATFORM_LABELS: Record<Platform, string> = {
-  IF: 'Infofrankrijk',
-  CC: 'Café Claude',
-  DF: 'DossierFrankrijk',
-  FK: 'Financieel Kompas',
-  BH: 'Correspondentie-assistent',
-  NLFR: 'Nederlanders.fr',
-  EP: 'EnergiePortaal',
-  overig: 'Overig',
-};
 
 export const STATUS_LABELS: Record<Status, string> = {
   idee: '💡 Idee',
