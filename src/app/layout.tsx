@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Wishlist — Communities Abroad",
+  title: "Boîte à idées — Communities Abroad",
   description: "Ideeën en wensen voor de Communities Abroad tools",
 };
 

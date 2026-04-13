@@ -96,7 +96,7 @@ export default function Home() {
       {/* Header */}
       <header className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <h1 className="text-2xl mb-1">Wishlist</h1>
+          <h1 className="text-2xl mb-1">Boîte à idées</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
             Ideeën en wensen voor de Communities Abroad tools
           </p>
