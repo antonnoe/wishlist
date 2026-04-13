@@ -1,20 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 
+function isAdmin(request: NextRequest) {
+  const key = request.headers.get('x-admin-key');
+  return key === process.env.ADMIN_KEY;
+}
+
+function isClaude(request: NextRequest) {
+  const key = request.headers.get('x-claude-key');
+  return key === process.env.CLAUDE_API_KEY;
+}
+
+function isAuthorized(request: NextRequest) {
+  return isAdmin(request) || isClaude(request);
+}
+
 export async function GET(request: NextRequest) {
   const supabase = getServiceClient();
   const { searchParams } = new URL(request.url);
-  
+  const authorized = isAuthorized(request);
+
   const platform = searchParams.get('platform');
   const status = searchParams.get('status');
-  const visibility = searchParams.get('visibility') || 'public';
+  const visibility = searchParams.get('visibility');
 
   let query = supabase
     .from('wishlist')
     .select('*')
-    .eq('visibility', visibility)
     .order('upvotes', { ascending: false })
     .order('created_at', { ascending: false });
+
+  // Non-authorized users only see public items
+  if (!authorized) {
+    query = query.eq('visibility', 'public');
+  } else if (visibility) {
+    query = query.eq('visibility', visibility);
+  }
 
   if (platform) query = query.eq('platform', platform);
   if (status) query = query.eq('status', status);
@@ -31,12 +52,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const supabase = getServiceClient();
   const body = await request.json();
+  const authorized = isAuthorized(request);
 
-  // Check for admin key for private items
-  const adminKey = request.headers.get('x-admin-key');
-  const isAdmin = adminKey === process.env.ADMIN_KEY;
-
-  if (body.visibility === 'private' && !isAdmin) {
+  // Private items require authorization
+  if (body.visibility === 'private' && !authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -58,4 +77,56 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(data, { status: 201 });
+}
+
+export async function PATCH(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const supabase = getServiceClient();
+  const body = await request.json();
+  const { id, ...updates } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('wishlist')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const supabase = getServiceClient();
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from('wishlist')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ deleted: true });
 }
