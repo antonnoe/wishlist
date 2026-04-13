@@ -252,15 +252,8 @@ export default function Home() {
                       <ReactMarkdown>{item.description}</ReactMarkdown>
                     </div>
                   )}
-                  {item.url && (
-                    <a href={item.url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs inline-flex items-center gap-1 mb-2 hover:underline"
-                      style={{ color: 'var(--primary)' }}>
-                      🔗 Meer informatie
-                    </a>
-                  )}
-                  {item.admin_note && (
-                    <AdminNote note={item.admin_note} />
+                  {(item.admin_note || item.url) && (
+                    <AdminNote note={item.admin_note || null} url={item.url || null} />
                   )}
                   <span
                     className="text-xs px-2 py-0.5 rounded"
@@ -285,7 +278,7 @@ export default function Home() {
   );
 }
 
-function AdminNote({ note }: { note: string }) {
+function AdminNote({ note, url }: { note: string | null; url: string | null }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mb-2">
@@ -302,7 +295,14 @@ function AdminNote({ note }: { note: string }) {
           className="mt-1 text-sm rounded-md p-3 prose-sm"
           style={{ background: 'var(--primary-light)', color: 'var(--text)', borderLeft: '3px solid var(--primary)' }}
         >
-          <ReactMarkdown>{note}</ReactMarkdown>
+          {note && <ReactMarkdown>{note}</ReactMarkdown>}
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-sm font-medium hover:underline"
+              style={{ color: 'var(--primary)' }}>
+              🔗 Meer informatie
+            </a>
+          )}
         </div>
       )}
     </div>
