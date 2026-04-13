@@ -167,12 +167,18 @@ export default function Home() {
                 </label>
                 <textarea
                   value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optioneel: waarom is dit nuttig?"
+                  onChange={(e) => {
+                    const words = e.target.value.split(/\s+/).filter(Boolean);
+                    if (words.length <= 150) setFormDescription(e.target.value);
+                  }}
+                  placeholder="Optioneel: waarom is dit nuttig? (max 150 woorden)"
                   rows={3}
                   className="w-full rounded-md border px-3 py-2 text-sm"
                   style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
                 />
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {formDescription.split(/\s+/).filter(Boolean).length}/150 woorden
+                </span>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
@@ -242,9 +248,16 @@ export default function Home() {
                     </span>
                   </div>
                   {item.description && (
-                    <div className="text-sm mb-2 prose-sm" style={{ color: 'var(--text-muted)' }}>
+                    <div className="text-sm mb-2 prose-sm overflow-y-auto" style={{ color: 'var(--text-muted)', maxHeight: '120px' }}>
                       <ReactMarkdown>{item.description}</ReactMarkdown>
                     </div>
+                  )}
+                  {item.url && (
+                    <a href={item.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs inline-flex items-center gap-1 mb-2 hover:underline"
+                      style={{ color: 'var(--primary)' }}>
+                      🔗 Meer informatie
+                    </a>
                   )}
                   {item.admin_note && (
                     <AdminNote note={item.admin_note} />

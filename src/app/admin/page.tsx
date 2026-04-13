@@ -29,6 +29,7 @@ export default function AdminPage() {
   const [editStatus, setEditStatus] = useState<Status>('idee');
   const [editVisibility, setEditVisibility] = useState<Visibility>('public');
   const [editAdminNote, setEditAdminNote] = useState('');
+  const [editUrl, setEditUrl] = useState('');
 
   const platforms = Object.keys(PLATFORM_LABELS) as Platform[];
   const statuses = Object.keys(STATUS_LABELS) as Status[];
@@ -99,6 +100,7 @@ export default function AdminPage() {
         status: editStatus,
         visibility: editVisibility,
         admin_note: editAdminNote || null,
+        url: editUrl || null,
       }),
     });
     setEditingId(null);
@@ -122,6 +124,7 @@ export default function AdminPage() {
     setEditStatus(item.status);
     setEditVisibility(item.visibility);
     setEditAdminNote(item.admin_note || '');
+    setEditUrl(item.url || '');
   }
 
   const filtered = items.filter((item) => {
@@ -293,6 +296,9 @@ export default function AdminPage() {
                       className="w-full rounded-md border px-3 py-2 text-sm" 
                       style={{ borderColor: 'var(--primary-border)', background: 'var(--primary-light)' }}
                       placeholder="Admin-reactie (zichtbaar voor gebruikers als ingevuld)" />
+                    <input type="url" value={editUrl} onChange={(e) => setEditUrl(e.target.value)}
+                      className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}
+                      placeholder="URL (optioneel, bijv. https://infofrankrijk.com/...)" />
                     <div className="flex flex-wrap gap-3">
                       <select value={editPlatform} onChange={(e) => setEditPlatform(e.target.value as Platform)}
                         className="rounded-md border px-2 py-1 text-sm" style={{ borderColor: 'var(--border)' }}>
@@ -346,6 +352,12 @@ export default function AdminPage() {
                           style={{ background: 'var(--primary-light)', borderLeft: '3px solid var(--primary)', color: 'var(--text)' }}>
                           💬 {item.admin_note}
                         </div>
+                      )}
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs mb-2 inline-block hover:underline" style={{ color: 'var(--primary)' }}>
+                          🔗 {item.url}
+                        </a>
                       )}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs px-2 py-0.5 rounded"

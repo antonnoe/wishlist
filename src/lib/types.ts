@@ -14,6 +14,7 @@ export interface WishlistItem {
   created_at: string;
   updated_at: string;
   admin_note?: string | null;
+  url?: string | null;
   user_has_voted?: boolean;
 }
 
