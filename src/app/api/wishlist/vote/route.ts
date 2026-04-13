@@ -10,40 +10,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing wishlist_id or user_id' }, { status: 400 });
   }
 
-  // Check if already voted
-  const { data: existing } = await supabase
+  // Check if already voted (maybeSingle returns null instead of error)
+  const { data: existing, error: checkError } = await supabase
     .from('wishlist_votes')
     .select('id')
     .eq('wishlist_id', wishlist_id)
     .eq('user_id', user_id)
-    .single();
+    .maybeSingle();
+
+  if (checkError) {
+    return NextResponse.json({ error: checkError.message }, { status: 500 });
+  }
 
   if (existing) {
-    // Remove vote (toggle)
-    await supabase
+    // Remove vote (toggle off)
+    const { error: deleteError } = await supabase
       .from('wishlist_votes')
       .delete()
       .eq('wishlist_id', wishlist_id)
       .eq('user_id', user_id);
 
-    // Decrement counter
-    await supabase
-      .from('wishlist')
-      .update({ upvotes: supabase.rpc ? undefined : 0 })
-      .eq('id', wishlist_id);
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
 
-    // Use raw SQL to decrement safely
     await supabase.rpc('decrement_upvotes', { item_id: wishlist_id });
-
     return NextResponse.json({ voted: false });
   } else {
     // Add vote
-    await supabase
+    const { error: insertError } = await supabase
       .from('wishlist_votes')
       .insert({ wishlist_id, user_id });
 
-    await supabase.rpc('increment_upvotes', { item_id: wishlist_id });
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
 
+    await supabase.rpc('increment_upvotes', { item_id: wishlist_id });
     return NextResponse.json({ voted: true });
   }
 }
