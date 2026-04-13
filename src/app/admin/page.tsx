@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [editPlatform, setEditPlatform] = useState<Platform>('overig');
   const [editStatus, setEditStatus] = useState<Status>('idee');
   const [editVisibility, setEditVisibility] = useState<Visibility>('public');
+  const [editAdminNote, setEditAdminNote] = useState('');
 
   const platforms = Object.keys(PLATFORM_LABELS) as Platform[];
   const statuses = Object.keys(STATUS_LABELS) as Status[];
@@ -97,6 +98,7 @@ export default function AdminPage() {
         platform: editPlatform,
         status: editStatus,
         visibility: editVisibility,
+        admin_note: editAdminNote || null,
       }),
     });
     setEditingId(null);
@@ -119,6 +121,7 @@ export default function AdminPage() {
     setEditPlatform(item.platform);
     setEditStatus(item.status);
     setEditVisibility(item.visibility);
+    setEditAdminNote(item.admin_note || '');
   }
 
   const filtered = items.filter((item) => {
@@ -284,7 +287,12 @@ export default function AdminPage() {
                     <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                       className="w-full rounded-md border px-3 py-2 text-sm font-semibold" style={{ borderColor: 'var(--border)' }} />
                     <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2}
-                      className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                      className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}
+                      placeholder="Beschrijving" />
+                    <textarea value={editAdminNote} onChange={(e) => setEditAdminNote(e.target.value)} rows={2}
+                      className="w-full rounded-md border px-3 py-2 text-sm" 
+                      style={{ borderColor: 'var(--primary-border)', background: 'var(--primary-light)' }}
+                      placeholder="Admin-reactie (zichtbaar voor gebruikers als ingevuld)" />
                     <div className="flex flex-wrap gap-3">
                       <select value={editPlatform} onChange={(e) => setEditPlatform(e.target.value as Platform)}
                         className="rounded-md border px-2 py-1 text-sm" style={{ borderColor: 'var(--border)' }}>
@@ -332,6 +340,12 @@ export default function AdminPage() {
                       </div>
                       {item.description && (
                         <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>{item.description}</p>
+                      )}
+                      {item.admin_note && (
+                        <div className="text-xs mb-2 rounded-md p-2"
+                          style={{ background: 'var(--primary-light)', borderLeft: '3px solid var(--primary)', color: 'var(--text)' }}>
+                          💬 {item.admin_note}
+                        </div>
                       )}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs px-2 py-0.5 rounded"

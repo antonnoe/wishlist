@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { WishlistItem, PLATFORM_LABELS, STATUS_LABELS, STATUS_COLORS, Platform, Status } from '@/lib/types';
+import ReactMarkdown from 'react-markdown';
 
 export default function Home() {
   const [items, setItems] = useState<WishlistItem[]>([]);
@@ -241,9 +242,12 @@ export default function Home() {
                     </span>
                   </div>
                   {item.description && (
-                    <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
-                      {item.description}
-                    </p>
+                    <div className="text-sm mb-2 prose-sm" style={{ color: 'var(--text-muted)' }}>
+                      <ReactMarkdown>{item.description}</ReactMarkdown>
+                    </div>
+                  )}
+                  {item.admin_note && (
+                    <AdminNote note={item.admin_note} />
                   )}
                   <span
                     className="text-xs px-2 py-0.5 rounded"
@@ -257,6 +261,37 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Subtle admin link */}
+      <footer className="max-w-3xl mx-auto px-4 py-8 text-right">
+        <a href="/admin" className="text-xs opacity-20 hover:opacity-60 transition-opacity" style={{ color: 'var(--text-muted)' }}>
+          admin
+        </a>
+      </footer>
+    </div>
+  );
+}
+
+function AdminNote({ note }: { note: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-xs font-medium flex items-center gap-1"
+        style={{ color: 'var(--primary)' }}
+      >
+        <span>{open ? '▾' : '▸'}</span>
+        Reactie beheerder
+      </button>
+      {open && (
+        <div
+          className="mt-1 text-sm rounded-md p-3 prose-sm"
+          style={{ background: 'var(--primary-light)', color: 'var(--text)', borderLeft: '3px solid var(--primary)' }}
+        >
+          <ReactMarkdown>{note}</ReactMarkdown>
+        </div>
+      )}
     </div>
   );
 }
