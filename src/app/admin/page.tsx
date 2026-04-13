@@ -172,7 +172,13 @@ export default function AdminPage() {
             <h1 className="text-2xl mb-1">Boîte à idées — Admin</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{items.length} items totaal</p>
           </div>
-          <a href="/" className="text-sm underline" style={{ color: 'var(--primary)' }}>← Publieke pagina</a>
+          <div className="flex items-center gap-4">
+            <a href="https://claude.ai/chat/38766adf-53e9-4fb7-a2cc-bb895356a69c" target="_blank" rel="noopener noreferrer"
+              className="text-xs px-3 py-1 rounded-full" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
+              🤖 Beheersessie
+            </a>
+            <a href="/" className="text-sm underline" style={{ color: 'var(--primary)' }}>← Publieke pagina</a>
+          </div>
         </div>
         {/* Tabs */}
         <div className="max-w-5xl mx-auto px-4 flex gap-4">
