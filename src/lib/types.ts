@@ -21,7 +21,7 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   CC: 'Café Claude',
   DF: 'DossierFrankrijk',
   FK: 'Financieel Kompas',
-  BH: 'Briefhulp',
+  BH: 'Correspondentie-assistent',
   NLFR: 'Nederlanders.fr',
   EP: 'EnergiePortaal',
   overig: 'Overig',
