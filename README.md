@@ -41,6 +41,6 @@ Items kunnen gekoppeld worden aan: `IF`, `CC`, `DF`, `FK`, `BH`, `NLFR`, `EP`, `
 
 ## Supabase
 
-Project: `communities-tools`  
-Tabellen: `wishlist`, `wishlist_votes`  
+Project: `communities-tools`
+Tabellen: `wishlist`, `wishlist_votes`
 RLS: enabled met policies voor public read en service_role full access
