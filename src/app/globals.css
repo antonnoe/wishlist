@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Mulish:wght@400;500;600&display=swap');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --primary: #800000;
+  --primary-light: rgba(128, 0, 0, 0.08);
+  --primary-medium: rgba(128, 0, 0, 0.15);
+  --primary-border: rgba(128, 0, 0, 0.2);
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+  --bg: #fafaf8;
+  --bg-card: #ffffff;
+  --bg-embed: transparent;
+  --border: #e5e5e0;
+  --success: #16a34a;
+  --warning: #d97706;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Mulish', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.8em;
+}
+
+h1, h2, h3 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  color: var(--primary);
 }
