@@ -173,8 +173,11 @@ export default function Home() {
         {/* Confirmation message */}
         {submitted && (
           <div className="rounded-lg border p-4 mb-6" style={{ background: '#e8f5e9', borderColor: '#4caf50' }}>
-            <p className="text-sm font-medium" style={{ color: '#2e7d32' }}>
-              ✓ Bedankt! Uw idee is ingediend en wordt na beoordeling geplaatst.
+            <p className="text-sm font-medium mb-1" style={{ color: '#2e7d32' }}>
+              ✓ Hartelijk dank voor uw idee!
+            </p>
+            <p className="text-sm" style={{ color: '#2e7d32' }}>
+              We zullen uw suggestie beoordelen en daarna plaatsen. Als er al een gelijksoortig idee bestaat, voegen we uw stem daaraan toe.
             </p>
           </div>
         )}

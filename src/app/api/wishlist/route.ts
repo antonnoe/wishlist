@@ -53,9 +53,11 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const authorized = isAuthorized(request);
 
-  // Private items require authorization
-  if (body.visibility === 'private' && !authorized) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Non-authorized users can only submit with status 'idee'
+  // Their items are always saved as 'private' (pending moderation)
+  if (!authorized) {
+    body.status = 'idee';
+    body.visibility = 'private';
   }
 
   const { data, error } = await supabase
