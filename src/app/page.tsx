@@ -116,11 +116,18 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <header className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <h1 className="text-2xl mb-1">Boîte à idées</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-            Ideeën en wensen voor de Communities Abroad tools
-          </p>
+        <div className="max-w-3xl mx-auto px-4 py-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl mb-1">Boîte à idées</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+              Ideeën en wensen voor de Communities Abroad tools
+            </p>
+          </div>
+          <a href="https://www.nederlanders.fr" target="_top"
+            className="rounded-md px-3 py-1.5 text-xs font-medium shrink-0"
+            style={{ background: 'var(--primary-light)', color: 'var(--primary)', textDecoration: 'none', fontFamily: 'Mulish, sans-serif' }}>
+            ← Terug naar forum
+          </a>
         </div>
       </header>
 
