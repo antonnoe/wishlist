@@ -133,28 +133,12 @@ export default function Home() {
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          {/* Platform filter - grouped */}
-          <select
+          {/* Platform filter - two-level dropdown */}
+          <PlatformDropdown
             value={filterPlatform}
-            onChange={(e) => setFilterPlatform(e.target.value)}
-            className="rounded-md border px-3 py-2 text-sm"
-            style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
-          >
-            <option value="all">Alle platforms</option>
-            {topLevel.flatMap((p) => {
-              const children = visibleChildren(p.id);
-              return [
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>,
-                ...children.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {'\u00A0\u00A0↳ '}{c.label}
-                  </option>
-                )),
-              ];
-            })}
-          </select>
+            onChange={setFilterPlatform}
+            platforms={platforms}
+          />
 
           <select
             value={filterStatus}
@@ -232,18 +216,12 @@ export default function Home() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Platform / Tool</label>
-                <select value={formPlatform} onChange={(e) => setFormPlatform(e.target.value)}
-                  className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
-                  {topLevel.flatMap((p) => {
-                    const children = visibleChildren(p.id);
-                    return [
-                      <option key={p.id} value={p.id}>{p.label}</option>,
-                      ...children.map((c) => (
-                        <option key={c.id} value={c.id}>{'\u00A0\u00A0↳ '}{c.label}</option>
-                      )),
-                    ];
-                  })}
-                </select>
+                <PlatformDropdown
+                  value={formPlatform}
+                  onChange={setFormPlatform}
+                  platforms={platforms}
+                  showAll
+                />
               </div>
               <button onClick={handleSubmit} disabled={submitting || !formTitle.trim() || !formForumName.trim()}
                 className="rounded-md px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
@@ -338,6 +316,175 @@ function AdminNote({ note, url }: { note: string | null; url: string | null }) {
               style={{ color: 'var(--primary)' }}>
               🔗 Meer informatie
             </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlatformDropdown({
+  value,
+  onChange,
+  platforms,
+  showAll = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  platforms: PlatformItem[];
+  showAll?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [expandedParent, setExpandedParent] = useState<string | null>(null);
+
+  const topLevel = platforms.filter(p => !p.parent_id && p.visible);
+  const childrenOf = (parentId: string) =>
+    platforms.filter(p => p.parent_id === parentId && p.visible);
+
+  const platformLabels: Record<string, string> = {};
+  platforms.forEach(p => { platformLabels[p.id] = p.label; });
+
+  // Display label for current value
+  const displayLabel = value === 'all'
+    ? 'Alle platforms'
+    : platformLabels[value] || value;
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      const el = document.getElementById('pd-' + (showAll ? 'form' : 'filter'));
+      if (el && !el.contains(e.target as Node)) {
+        setOpen(false);
+        setExpandedParent(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open, showAll]);
+
+  function select(id: string) {
+    onChange(id);
+    setOpen(false);
+    setExpandedParent(null);
+  }
+
+  return (
+    <div className="relative" id={'pd-' + (showAll ? 'form' : 'filter')}>
+      <button
+        type="button"
+        onClick={() => { setOpen(!open); setExpandedParent(null); }}
+        className="rounded-md border px-3 py-2 text-sm flex items-center gap-2 min-w-[160px]"
+        style={{
+          borderColor: open ? 'var(--primary)' : 'var(--border)',
+          fontFamily: 'Mulish, sans-serif',
+          background: 'var(--bg-card)',
+          cursor: 'pointer',
+        }}
+      >
+        <span className="flex-1 text-left truncate">{displayLabel}</span>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 rounded-md border shadow-lg z-50 overflow-hidden"
+          style={{
+            background: 'var(--bg-card)',
+            borderColor: 'var(--border)',
+            minWidth: '220px',
+            maxHeight: '320px',
+            overflowY: 'auto',
+          }}
+        >
+          {expandedParent === null ? (
+            <>
+              {/* Niveau 1: hoofdplatforms */}
+              {showAll ? null : (
+                <button
+                  type="button"
+                  onClick={() => select('all')}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                  style={{
+                    fontFamily: 'Mulish, sans-serif',
+                    fontWeight: value === 'all' ? 700 : 400,
+                    color: value === 'all' ? 'var(--primary)' : 'var(--text)',
+                  }}
+                >
+                  Alle platforms
+                </button>
+              )}
+              {topLevel.map((p) => {
+                const kids = childrenOf(p.id);
+                const hasKids = kids.length > 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      if (hasKids) {
+                        setExpandedParent(p.id);
+                      } else {
+                        select(p.id);
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center justify-between"
+                    style={{
+                      fontFamily: 'Mulish, sans-serif',
+                      fontWeight: value === p.id ? 700 : 400,
+                      color: value === p.id ? 'var(--primary)' : 'var(--text)',
+                    }}
+                  >
+                    <span>{p.label}</span>
+                    {hasKids && <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>▸</span>}
+                  </button>
+                );
+              })}
+            </>
+          ) : (
+            <>
+              {/* Niveau 2: tools van een platform */}
+              <button
+                type="button"
+                onClick={() => setExpandedParent(null)}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors border-b"
+                style={{
+                  fontFamily: 'Mulish, sans-serif',
+                  color: 'var(--primary)',
+                  borderColor: 'var(--border)',
+                }}
+              >
+                ← Terug
+              </button>
+              <button
+                type="button"
+                onClick={() => select(expandedParent)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                style={{
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight: 600,
+                  color: value === expandedParent ? 'var(--primary)' : 'var(--text)',
+                }}
+              >
+                {platformLabels[expandedParent] || expandedParent} <span style={{ fontWeight: 400, fontSize: '11px', color: 'var(--text-muted)' }}>(alles)</span>
+              </button>
+              {childrenOf(expandedParent).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => select(c.id)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                  style={{
+                    fontFamily: 'Mulish, sans-serif',
+                    paddingLeft: '24px',
+                    fontWeight: value === c.id ? 700 : 400,
+                    color: value === c.id ? 'var(--primary)' : 'var(--text)',
+                  }}
+                >
+                  ↳ {c.label}
+                </button>
+              ))}
+            </>
           )}
         </div>
       )}
