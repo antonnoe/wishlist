@@ -126,7 +126,7 @@ export default function Home() {
             style={{ borderColor: 'var(--border)', fontFamily: 'Mulish, sans-serif' }}
           >
             <option value="all">Alle platforms</option>
-            {topLevel.map((p) => {
+            {topLevel.flatMap((p) => {
               const children = visibleChildren(p.id);
               return [
                 <option key={p.id} value={p.id}>
@@ -134,7 +134,7 @@ export default function Home() {
                 </option>,
                 ...children.map((c) => (
                   <option key={c.id} value={c.id}>
-                    &nbsp;&nbsp;↳ {c.label}
+                    {'\u00A0\u00A0↳ '}{c.label}
                   </option>
                 )),
               ];
@@ -190,12 +190,12 @@ export default function Home() {
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Platform / Tool</label>
                 <select value={formPlatform} onChange={(e) => setFormPlatform(e.target.value)}
                   className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
-                  {topLevel.map((p) => {
+                  {topLevel.flatMap((p) => {
                     const children = visibleChildren(p.id);
                     return [
                       <option key={p.id} value={p.id}>{p.label}</option>,
                       ...children.map((c) => (
-                        <option key={c.id} value={c.id}>&nbsp;&nbsp;↳ {c.label}</option>
+                        <option key={c.id} value={c.id}>{'\u00A0\u00A0↳ '}{c.label}</option>
                       )),
                     ];
                   })}

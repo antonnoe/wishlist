@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('wishlist')
     .select('*')
-    .order('upvotes', { ascending: false })
     .order('created_at', { ascending: false });
 
   // Non-authorized users only see public items
