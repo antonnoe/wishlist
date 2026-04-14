@@ -149,6 +149,23 @@ export default function AdminPage() {
     return true;
   });
 
+  const pendingItems = items.filter(i => i.visibility === 'private' && i.status === 'idee');
+
+  async function handleApprove(id: string) {
+    await fetch('/api/wishlist', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify({ id, visibility: 'public', admin_note: null }),
+    });
+    fetchData();
+  }
+
+  async function handleReject(id: string) {
+    if (!confirm('Weet je zeker dat je dit idee wilt afwijzen? Het wordt verwijderd.')) return;
+    await fetch(`/api/wishlist?id=${id}`, { method: 'DELETE', headers: { 'x-admin-key': adminKey } });
+    fetchData();
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
@@ -196,6 +213,51 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
+        {/* Pending moderation banner */}
+        {pendingItems.length > 0 && (
+          <div className="rounded-lg border-2 p-4 mb-6" style={{ background: '#fff8e1', borderColor: '#f9a825' }}>
+            <h2 className="text-base font-semibold mb-3" style={{ fontFamily: 'Poppins, sans-serif', color: '#e65100' }}>
+              ⏳ {pendingItems.length} idee{pendingItems.length !== 1 ? 'ën' : ''} wachtend op goedkeuring
+            </h2>
+            <div className="space-y-3">
+              {pendingItems.map((item) => (
+                <div key={item.id} className="rounded-md border p-3 flex gap-3 items-start" style={{ background: '#fff', borderColor: '#ffe082' }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>{item.title}</span>
+                      <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                        {platformLabels[item.platform] || item.platform}
+                      </span>
+                    </div>
+                    {item.description && <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{item.description}</p>}
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Forumnaam: <strong>{item.created_by}</strong>
+                      {item.admin_note && <> · {item.admin_note}</>}
+                      {' · '}{new Date(item.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => handleApprove(item.id)}
+                      className="rounded-md px-3 py-1.5 text-xs font-medium text-white"
+                      style={{ background: '#16a34a' }}>
+                      ✓ Goedkeuren
+                    </button>
+                    <button onClick={() => handleReject(item.id)}
+                      className="rounded-md px-3 py-1.5 text-xs font-medium text-white"
+                      style={{ background: '#dc2626' }}>
+                      ✗ Afwijzen
+                    </button>
+                    <button onClick={() => startEdit(item)}
+                      className="rounded-md px-3 py-1.5 text-xs border"
+                      style={{ borderColor: 'var(--border)' }}>
+                      ✏️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {tab === 'platforms' ? (
           /* Platforms management */
           <div className="space-y-4">
@@ -370,6 +432,11 @@ export default function AdminPage() {
                               style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
                               {platformLabels[item.platform] || item.platform}
                             </span>
+                            {item.created_by && item.created_by !== 'admin' && (
+                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                door <strong>{item.created_by}</strong>
+                              </span>
+                            )}
                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                               {new Date(item.created_at).toLocaleDateString('nl-NL')}
                             </span>
