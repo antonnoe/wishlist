@@ -4,28 +4,30 @@ import { getServiceClient } from '@/lib/supabase';
 export async function GET() {
   const supabase = getServiceClient();
 
-  // Count public items created this month
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const { count, error } = await supabase
+  // Count public items created this month
+  const { count: monthCount, error: e1 } = await supabase
     .from('wishlist')
     .select('*', { count: 'exact', head: true })
     .eq('visibility', 'public')
     .gte('created_at', firstOfMonth);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // Count private items (pending moderation)
+  const { count: pendingCount, error: e2 } = await supabase
+    .from('wishlist')
+    .select('*', { count: 'exact', head: true })
+    .eq('visibility', 'private')
+    .eq('status', 'idee');
+
+  if (e1 || e2) {
+    return NextResponse.json({ error: (e1 || e2)?.message }, { status: 500 });
   }
 
-  // CORS headers for cross-origin embed
-  return NextResponse.json(
-    { count: count || 0, month: now.toISOString().slice(0, 7) },
-    {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-    }
-  );
+  return NextResponse.json({
+    month: monthCount || 0,
+    pending: pendingCount || 0,
+    period: now.toISOString().slice(0, 7),
+  });
 }

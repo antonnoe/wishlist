@@ -14,6 +14,9 @@ export default function Home() {
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formPlatform, setFormPlatform] = useState<string>('overig');
+  const [formForumName, setFormForumName] = useState('');
+  const [formRealName, setFormRealName] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userId] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -65,7 +68,7 @@ export default function Home() {
   }
 
   async function handleSubmit() {
-    if (!formTitle.trim()) return;
+    if (!formTitle.trim() || !formForumName.trim()) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/wishlist', {
@@ -75,15 +78,20 @@ export default function Home() {
           title: formTitle.trim(),
           description: formDescription.trim() || null,
           platform: formPlatform,
-          created_by: userId,
+          created_by: formForumName.trim(),
+          visibility: 'private',
+          admin_note: formRealName.trim() ? `Ingediend door: ${formRealName.trim()} (${formForumName.trim()})` : null,
         }),
       });
       if (res.ok) {
         setFormTitle('');
         setFormDescription('');
         setFormPlatform('overig');
+        setFormForumName('');
+        setFormRealName('');
         setShowForm(false);
-        fetchData();
+        setSubmitted(true);
+        setTimeout(() => setSubmitted(false), 5000);
       }
     } finally {
       setSubmitting(false);
@@ -162,11 +170,37 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Confirmation message */}
+        {submitted && (
+          <div className="rounded-lg border p-4 mb-6" style={{ background: '#e8f5e9', borderColor: '#4caf50' }}>
+            <p className="text-sm font-medium" style={{ color: '#2e7d32' }}>
+              ✓ Bedankt! Uw idee is ingediend en wordt na beoordeling geplaatst.
+            </p>
+          </div>
+        )}
+
         {/* Submit form */}
         {showForm && (
           <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--bg-card)', borderColor: 'var(--primary-border)' }}>
             <h2 className="text-lg mb-4">Nieuw idee indienen</h2>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+              Uw idee wordt na beoordeling door de beheerder geplaatst.
+            </p>
             <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Uw forumnaam *</label>
+                  <input type="text" value={formForumName} onChange={(e) => setFormForumName(e.target.value)}
+                    placeholder="Zoals op nederlanders.fr"
+                    className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Uw naam <span className="font-normal">(optioneel)</span></label>
+                  <input type="text" value={formRealName} onChange={(e) => setFormRealName(e.target.value)}
+                    placeholder="Voornaam of volledige naam"
+                    className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Titel *</label>
                 <input type="text" value={formTitle} onChange={(e) => setFormTitle(e.target.value)}
@@ -201,7 +235,7 @@ export default function Home() {
                   })}
                 </select>
               </div>
-              <button onClick={handleSubmit} disabled={submitting || !formTitle.trim()}
+              <button onClick={handleSubmit} disabled={submitting || !formTitle.trim() || !formForumName.trim()}
                 className="rounded-md px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
                 style={{ background: 'var(--primary)' }}>
                 {submitting ? 'Bezig...' : 'Indienen'}
@@ -248,10 +282,17 @@ export default function Home() {
                   {(item.admin_note || item.url) && (
                     <AdminNote note={item.admin_note || null} url={item.url || null} />
                   )}
-                  <span className="text-xs px-2 py-0.5 rounded"
-                    style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}>
-                    {getPlatformLabel(item.platform)}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs px-2 py-0.5 rounded"
+                      style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}>
+                      {getPlatformLabel(item.platform)}
+                    </span>
+                    {item.created_by && item.created_by !== 'admin' && item.created_by !== 'anonymous' && !item.created_by.startsWith('user_') && (
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        door {item.created_by}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
