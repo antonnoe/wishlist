@@ -1,5 +1,6 @@
 export type Status = 'idee' | 'gepland' | 'bezig' | 'live' | 'verworpen';
 export type Visibility = 'public' | 'private';
+export type Sentiment = 'positive' | 'neutral' | 'negative';
 
 export interface PlatformItem {
   id: string;
@@ -16,13 +17,15 @@ export interface WishlistItem {
   platform: string;
   status: Status;
   visibility: Visibility;
-  upvotes: number;
+  positive_count: number;
+  neutral_count: number;
+  negative_count: number;
   created_by: string;
   created_at: string;
   updated_at: string;
   admin_note?: string | null;
   url?: string | null;
-  user_has_voted?: boolean;
+  user_sentiment?: Sentiment | null;
 }
 
 export const STATUS_LABELS: Record<Status, string> = {
@@ -39,4 +42,10 @@ export const STATUS_COLORS: Record<Status, string> = {
   bezig: 'bg-amber-50 text-amber-700',
   live: 'bg-green-50 text-green-700',
   verworpen: 'bg-red-50 text-red-700',
+};
+
+export const SENTIMENT_EMOJI: Record<Sentiment, string> = {
+  positive: '😀',
+  neutral: '😐',
+  negative: '🙁',
 };
