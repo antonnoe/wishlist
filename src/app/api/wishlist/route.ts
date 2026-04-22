@@ -79,6 +79,38 @@ export async function POST(request: NextRequest) {
     body.visibility = 'private';
   }
 
+  // Server-side URL-validatie (alleen eigen domeinen toegestaan voor niet-admins)
+  const ALLOWED_DOMAINS = [
+    'infofrankrijk.com',
+    'nedergids.nl',
+    'nederlanders.fr',
+    'cafeclaude.fr',
+    'dossierfrankrijk.nl',
+  ];
+
+  let sanitizedUrl: string | null = null;
+  if (body.url) {
+    try {
+      const parsed = new URL(body.url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return NextResponse.json({ error: 'Invalid URL protocol' }, { status: 400 });
+      }
+      const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+      const isAllowed = ALLOWED_DOMAINS.some(
+        (d) => host === d || host.endsWith('.' + d)
+      );
+      if (!authorized && !isAllowed) {
+        return NextResponse.json(
+          { error: 'URL-domein niet toegestaan' },
+          { status: 400 }
+        );
+      }
+      sanitizedUrl = parsed.toString();
+    } catch {
+      return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+    }
+  }
+
   const { data, error } = await supabase
     .from('wishlist')
     .insert({
@@ -89,7 +121,7 @@ export async function POST(request: NextRequest) {
       visibility: body.visibility || 'public',
       created_by: body.created_by || 'anonymous',
       admin_note: body.admin_note || null,
-      url: body.url || null,
+      url: sanitizedUrl,
     })
     .select()
     .single();

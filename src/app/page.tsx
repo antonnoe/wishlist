@@ -90,22 +90,50 @@ export default function Home() {
 
     // Valideer URL indien ingevuld
     const trimmedUrl = formUrl.trim();
+    const ALLOWED_DOMAINS = [
+      'infofrankrijk.com',
+      'nedergids.nl',
+      'nederlanders.fr',
+      'cafeclaude.fr',
+      'dossierfrankrijk.nl',
+    ];
+
+    let finalUrl: string | null = null;
+
     if (trimmedUrl) {
+      let parsed: URL;
       try {
-        const parsed = new URL(trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`);
-        if (!['http:', 'https:'].includes(parsed.protocol)) {
-          alert('De URL moet met http:// of https:// beginnen.');
-          return;
-        }
+        parsed = new URL(trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`);
       } catch {
         alert('De ingevulde URL is niet geldig.');
         return;
       }
-    }
 
-    const finalUrl = trimmedUrl
-      ? (trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`)
-      : null;
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        alert('De URL moet met http:// of https:// beginnen.');
+        return;
+      }
+
+      const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+      const isAllowed = ALLOWED_DOMAINS.some(
+        (d) => host === d || host.endsWith('.' + d)
+      );
+
+      if (!isAllowed) {
+        alert(
+          'Alleen links naar eigen sites zijn toegestaan:\n\n' +
+          '• infofrankrijk.com\n' +
+          '• nedergids.nl\n' +
+          '• nederlanders.fr\n' +
+          '• cafeclaude.fr\n' +
+          '• dossierfrankrijk.nl\n\n' +
+          '(inclusief subdomeinen en onderliggende pagina\u2019s)'
+        );
+        return;
+      }
+
+      finalUrl = parsed.toString();
+    }
 
     setSubmitting(true);
     try {
@@ -260,7 +288,7 @@ export default function Home() {
                   placeholder="https://voorbeeld.nl/relevante-pagina"
                   className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Bijvoorbeeld een voorbeeld, bron of referentiesite.
+                  Alleen links naar eigen sites: infofrankrijk.com, nedergids.nl, nederlanders.fr, cafeclaude.fr, dossierfrankrijk.nl.
                 </span>
               </div>
               <div>
