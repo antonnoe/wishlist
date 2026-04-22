@@ -400,11 +400,11 @@ export default function AdminPage() {
                       </div>
                     ) : (
                       <div className="flex gap-4 items-start">
-                        <div className="flex flex-col items-center min-w-[48px] pt-1">
-                          <span className="text-lg font-semibold" style={{ color: 'var(--primary)', fontFamily: 'Poppins, sans-serif' }}>
-                            {item.upvotes}
-                          </span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>votes</span>
+                        <div className="flex flex-col items-center min-w-[64px] pt-1 text-xs" style={{ fontFamily: 'Mulish, sans-serif' }}>
+                          <div style={{ color: 'var(--text)' }}>
+                            😀 {item.positive_count} · 😐 {item.neutral_count} · 🙁 {item.negative_count}
+                          </div>
+                          <span style={{ color: 'var(--text-muted)', marginTop: '2px' }}>reacties</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">

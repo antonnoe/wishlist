@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { WishlistItem, PlatformItem, STATUS_LABELS, STATUS_COLORS, Status } from '@/lib/types';
+import { WishlistItem, PlatformItem, STATUS_LABELS, STATUS_COLORS, Status, Sentiment, SENTIMENT_EMOJI } from '@/lib/types';
 import ReactMarkdown from 'react-markdown';
 
 export default function Home() {
@@ -30,19 +30,13 @@ export default function Home() {
     return 'anonymous';
   });
 
-  // Build platform label lookup
   const platformLabels: Record<string, string> = {};
   platforms.forEach(p => { platformLabels[p.id] = p.label; });
-
-  // Visible platforms for dropdown (grouped)
-  const topLevel = platforms.filter(p => !p.parent_id && p.visible);
-  const visibleChildren = (parentId: string) =>
-    platforms.filter(p => p.parent_id === parentId && p.visible);
 
   async function fetchData() {
     try {
       const [itemsRes, platformsRes] = await Promise.all([
-        fetch('/api/wishlist?visibility=public'),
+        fetch(`/api/wishlist?visibility=public&user_id=${encodeURIComponent(userId)}`),
         fetch('/api/platforms'),
       ]);
       const itemsData = await itemsRes.json();
@@ -58,13 +52,36 @@ export default function Home() {
 
   useEffect(() => { fetchData(); }, []);
 
-  async function handleVote(itemId: string) {
-    const res = await fetch('/api/wishlist/vote', {
+  async function handleSentiment(itemId: string, sentiment: Sentiment) {
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item;
+
+      const prevSentiment = item.user_sentiment;
+      const updated = { ...item };
+
+      if (prevSentiment === 'positive') updated.positive_count = Math.max(0, updated.positive_count - 1);
+      if (prevSentiment === 'neutral') updated.neutral_count = Math.max(0, updated.neutral_count - 1);
+      if (prevSentiment === 'negative') updated.negative_count = Math.max(0, updated.negative_count - 1);
+
+      if (prevSentiment === sentiment) {
+        updated.user_sentiment = null;
+      } else {
+        updated.user_sentiment = sentiment;
+        if (sentiment === 'positive') updated.positive_count += 1;
+        if (sentiment === 'neutral') updated.neutral_count += 1;
+        if (sentiment === 'negative') updated.negative_count += 1;
+      }
+      return updated;
+    }));
+
+    const res = await fetch('/api/wishlist/sentiment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wishlist_id: itemId, user_id: userId }),
+      body: JSON.stringify({ wishlist_id: itemId, user_id: userId, sentiment }),
     });
-    if (res.ok) fetchData();
+    if (!res.ok) {
+      fetchData();
+    }
   }
 
   async function handleSubmit() {
@@ -100,7 +117,6 @@ export default function Home() {
 
   const filtered = items.filter((item) => {
     if (filterPlatform !== 'all') {
-      // Match exact or parent
       if (item.platform !== filterPlatform && !item.platform.startsWith(filterPlatform + '.')) return false;
     }
     if (filterStatus !== 'all' && item.status !== filterStatus) return false;
@@ -132,8 +148,9 @@ export default function Home() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6">
+        <FAQ />
+
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          {/* Platform filter - two-level dropdown */}
           <PlatformDropdown
             value={filterPlatform}
             onChange={setFilterPlatform}
@@ -161,7 +178,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Confirmation message */}
         {submitted && (
           <div className="rounded-lg border p-4 mb-6" style={{ background: '#e8f5e9', borderColor: '#4caf50' }}>
             <p className="text-sm font-medium mb-1" style={{ color: '#2e7d32' }}>
@@ -173,7 +189,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Submit form */}
         {showForm && (
           <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--bg-card)', borderColor: 'var(--primary-border)' }}>
             <h2 className="text-lg mb-4">Nieuw idee indienen</h2>
@@ -232,7 +247,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Items */}
         {loading ? (
           <p style={{ color: 'var(--text-muted)' }}>Laden...</p>
         ) : filtered.length === 0 ? (
@@ -240,48 +254,37 @@ export default function Home() {
         ) : (
           <div className="space-y-3">
             {filtered.map((item) => (
-              <div key={item.id} className="rounded-lg border p-4 flex gap-4 items-start"
+              <div key={item.id} className="rounded-lg border p-4"
                 style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                <button onClick={() => handleVote(item.id)}
-                  className="flex flex-col items-center min-w-[48px] pt-1 rounded-md transition-colors hover:bg-gray-50"
-                  title="Stem op dit idee">
-                  <svg width="20" height="12" viewBox="0 0 20 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 0L20 12H0L10 0Z" fill="var(--primary)" opacity="0.6" />
-                  </svg>
-                  <span className="text-lg font-semibold mt-1" style={{ color: 'var(--primary)', fontFamily: 'Poppins, sans-serif' }}>
-                    {item.upvotes}
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h3 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'Poppins, sans-serif' }}>
+                    {item.title}
+                  </h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[item.status]}`}>
+                    {STATUS_LABELS[item.status]}
                   </span>
-                </button>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h3 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'Poppins, sans-serif' }}>
-                      {item.title}
-                    </h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[item.status]}`}>
-                      {STATUS_LABELS[item.status]}
-                    </span>
-                  </div>
-                  {item.description && (
-                    <div className="text-sm mb-2 prose-sm overflow-y-auto" style={{ color: 'var(--text-muted)', maxHeight: '120px' }}>
-                      <ReactMarkdown>{item.description}</ReactMarkdown>
-                    </div>
-                  )}
-                  {(item.admin_note || item.url) && (
-                    <AdminNote note={item.admin_note || null} url={item.url || null} />
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 rounded"
-                      style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}>
-                      {getPlatformLabel(item.platform)}
-                    </span>
-                    {item.created_by && item.created_by !== 'admin' && item.created_by !== 'anonymous' && !item.created_by.startsWith('user_') && (
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        door {item.created_by}
-                      </span>
-                    )}
-                  </div>
                 </div>
+                {item.description && (
+                  <div className="text-sm mb-2 prose-sm overflow-y-auto" style={{ color: 'var(--text-muted)', maxHeight: '120px' }}>
+                    <ReactMarkdown>{item.description}</ReactMarkdown>
+                  </div>
+                )}
+                {(item.admin_note || item.url) && (
+                  <AdminNote note={item.admin_note || null} url={item.url || null} />
+                )}
+                <div className="flex items-center gap-2 flex-wrap mb-3">
+                  <span className="text-xs px-2 py-0.5 rounded"
+                    style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}>
+                    {getPlatformLabel(item.platform)}
+                  </span>
+                  {item.created_by && item.created_by !== 'admin' && item.created_by !== 'anonymous' && !item.created_by.startsWith('user_') && (
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      door {item.created_by}
+                    </span>
+                  )}
+                </div>
+
+                <SentimentBar item={item} onSentiment={handleSentiment} />
               </div>
             ))}
           </div>
@@ -293,6 +296,134 @@ export default function Home() {
           admin
         </a>
       </footer>
+    </div>
+  );
+}
+
+function SentimentBar({ item, onSentiment }: {
+  item: WishlistItem;
+  onSentiment: (id: string, s: Sentiment) => void;
+}) {
+  const options: { key: Sentiment; count: number }[] = [
+    { key: 'positive', count: item.positive_count },
+    { key: 'neutral', count: item.neutral_count },
+    { key: 'negative', count: item.negative_count },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+      {options.map(({ key, count }) => {
+        const isActive = item.user_sentiment === key;
+        return (
+          <button
+            key={key}
+            onClick={() => onSentiment(item.id, key)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all hover:scale-105"
+            style={{
+              background: isActive ? 'var(--primary-light)' : 'transparent',
+              border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
+              fontFamily: 'Mulish, sans-serif',
+            }}
+            title={isActive ? 'Klik om weer weg te halen' : 'Uw reactie'}
+          >
+            <span style={{ fontSize: '18px', lineHeight: 1 }}>{SENTIMENT_EMOJI[key]}</span>
+            <span className="text-sm font-medium" style={{ color: isActive ? 'var(--primary)' : 'var(--text-muted)' }}>
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FAQ() {
+  const [open, setOpen] = useState<boolean>(false);
+  const [openItem, setOpenItem] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('boite_faq_open') : null;
+    setOpen(stored === null ? true : stored === 'true');
+    setMounted(true);
+  }, []);
+
+  function toggleMain() {
+    const next = !open;
+    setOpen(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('boite_faq_open', String(next));
+    }
+  }
+
+  const questions = [
+    {
+      q: 'Wat is de Boîte à idées?',
+      a: 'Een openbare plek waar u ideeën, wensen en suggesties kunt delen voor de websites en hulpmiddelen van Communities Abroad: Nederlanders.fr, Infofrankrijk.com, Café Claude, Dossier Frankrijk, Briefhulp-FR, Financieel Kompas en Energieportaal.',
+    },
+    {
+      q: 'Voor wie is dit?',
+      a: 'Voor iedereen. U hoeft geen abonnee of lid te zijn. Lezen, reageren met een smiley en een idee indienen kan vrij.',
+    },
+    {
+      q: 'Hoe werkt de smiley-reactie?',
+      a: '😀 = u vindt dit een goed idee · 😐 = neutraal · 🙁 = u ziet er niets in. Klikken op dezelfde smiley haalt uw reactie weer weg. U kunt per idee maar één smiley geven.',
+    },
+    {
+      q: 'Wat gebeurt er met mijn idee?',
+      a: 'Nieuwe ideeën worden eerst door de beheerder bekeken voordat ze openbaar verschijnen. Gelijksoortige ideeën worden samengevoegd. Daarna krijgt een idee een status: Idee → Gepland → Bezig → Live (of in uitzonderlijke gevallen: Verworpen, met toelichting).',
+    },
+    {
+      q: 'Blijft mijn naam zichtbaar?',
+      a: 'Uw forumnaam komt bij het idee te staan. Uw optionele echte naam is alleen voor de beheerder en wordt niet publiek getoond.',
+    },
+  ];
+
+  if (!mounted) return null;
+
+  return (
+    <div className="rounded-lg border mb-6" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <button
+        onClick={toggleMain}
+        className="w-full flex items-center justify-between px-5 py-4 text-left"
+        style={{ fontFamily: 'Poppins, sans-serif' }}
+      >
+        <span className="font-semibold" style={{ color: 'var(--primary)' }}>
+          Hoe werkt de Boîte à idées?
+        </span>
+        <span style={{ color: 'var(--primary)', fontSize: '14px' }}>
+          {open ? '▾' : '▸'}
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-4 space-y-2" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+          {questions.map((item, idx) => {
+            const isOpen = openItem === idx;
+            return (
+              <div key={idx} className="rounded-md" style={{ background: isOpen ? 'var(--primary-light)' : 'transparent' }}>
+                <button
+                  onClick={() => setOpenItem(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-left text-sm"
+                  style={{ fontFamily: 'Mulish, sans-serif' }}
+                >
+                  <span className="font-medium" style={{ color: 'var(--text)' }}>
+                    {item.q}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                    {isOpen ? '−' : '+'}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="px-3 pb-3 text-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontFamily: 'Mulish, sans-serif' }}>
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -344,12 +475,10 @@ function PlatformDropdown({
   const platformLabels: Record<string, string> = {};
   platforms.forEach(p => { platformLabels[p.id] = p.label; });
 
-  // Display label for current value
   const displayLabel = value === 'all'
     ? 'Alle platforms'
     : platformLabels[value] || value;
 
-  // Close on click outside
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
@@ -399,7 +528,6 @@ function PlatformDropdown({
         >
           {expandedParent === null ? (
             <>
-              {/* Niveau 1: hoofdplatforms */}
               {showAll ? null : (
                 <button
                   type="button"
@@ -443,7 +571,6 @@ function PlatformDropdown({
             </>
           ) : (
             <>
-              {/* Niveau 2: tools van een platform */}
               <button
                 type="button"
                 onClick={() => setExpandedParent(null)}

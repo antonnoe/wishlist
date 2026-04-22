@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
   const platform = searchParams.get('platform');
   const status = searchParams.get('status');
   const visibility = searchParams.get('visibility');
+  const userId = searchParams.get('user_id');
 
   let query = supabase
     .from('wishlist')
     .select('*')
     .order('created_at', { ascending: false });
 
-  // Non-authorized users only see public items
   if (!authorized) {
     query = query.eq('visibility', 'public');
   } else if (visibility) {
@@ -45,6 +45,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Merge user's sentiments into the items when user_id is provided
+  if (userId && data && data.length > 0) {
+    const { data: sentiments } = await supabase
+      .from('wishlist_sentiments')
+      .select('wishlist_id, sentiment')
+      .eq('user_id', userId)
+      .in('wishlist_id', data.map((item: { id: string }) => item.id));
+
+    const sentimentMap = new Map<string, string>();
+    (sentiments || []).forEach((s: { wishlist_id: string; sentiment: string }) => {
+      sentimentMap.set(s.wishlist_id, s.sentiment);
+    });
+
+    const enriched = data.map((item: { id: string }) => ({
+      ...item,
+      user_sentiment: sentimentMap.get(item.id) || null,
+    }));
+
+    return NextResponse.json(enriched);
+  }
+
   return NextResponse.json(data);
 }
 
@@ -53,8 +74,6 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const authorized = isAuthorized(request);
 
-  // Non-authorized users can only submit with status 'idee'
-  // Their items are always saved as 'private' (pending moderation)
   if (!authorized) {
     body.status = 'idee';
     body.visibility = 'private';
@@ -121,10 +140,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from('wishlist')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from('wishlist').delete().eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
