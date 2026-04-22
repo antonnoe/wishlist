@@ -16,6 +16,7 @@ export default function Home() {
   const [formPlatform, setFormPlatform] = useState<string>('overig');
   const [formForumName, setFormForumName] = useState('');
   const [formRealName, setFormRealName] = useState('');
+  const [formUrl, setFormUrl] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userId] = useState(() => {
@@ -86,6 +87,26 @@ export default function Home() {
 
   async function handleSubmit() {
     if (!formTitle.trim() || !formForumName.trim()) return;
+
+    // Valideer URL indien ingevuld
+    const trimmedUrl = formUrl.trim();
+    if (trimmedUrl) {
+      try {
+        const parsed = new URL(trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          alert('De URL moet met http:// of https:// beginnen.');
+          return;
+        }
+      } catch {
+        alert('De ingevulde URL is niet geldig.');
+        return;
+      }
+    }
+
+    const finalUrl = trimmedUrl
+      ? (trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`)
+      : null;
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/wishlist', {
@@ -98,6 +119,7 @@ export default function Home() {
           created_by: formForumName.trim(),
           visibility: 'private',
           admin_note: formRealName.trim() ? `Ingediend door: ${formRealName.trim()} (${formForumName.trim()})` : null,
+          url: finalUrl,
         }),
       });
       if (res.ok) {
@@ -106,6 +128,7 @@ export default function Home() {
         setFormPlatform('overig');
         setFormForumName('');
         setFormRealName('');
+        setFormUrl('');
         setShowForm(false);
         setSubmitted(true);
         setTimeout(() => setSubmitted(false), 5000);
@@ -227,6 +250,17 @@ export default function Home() {
                   className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {formDescription.split(/\s+/).filter(Boolean).length}/150 woorden
+                </span>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
+                  Relevante link <span className="font-normal">(optioneel)</span>
+                </label>
+                <input type="url" value={formUrl} onChange={(e) => setFormUrl(e.target.value)}
+                  placeholder="https://voorbeeld.nl/relevante-pagina"
+                  className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Bijvoorbeeld een voorbeeld, bron of referentiesite.
                 </span>
               </div>
               <div>

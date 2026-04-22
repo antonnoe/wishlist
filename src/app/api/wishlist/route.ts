@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       visibility: body.visibility || 'public',
       created_by: body.created_by || 'anonymous',
       admin_note: body.admin_note || null,
+      url: body.url || null,
     })
     .select()
     .single();
