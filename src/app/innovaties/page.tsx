@@ -39,7 +39,7 @@ export default function InnovatiesPage() {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <SiteHeader
         title="Innovaties 2025-2026"
-        subtitle="Wat wij bouwen — fasering, doelgroep en functioneel doel."
+        subtitle="Wat wij bouwen — fasering en functioneel doel."
         back={{ href: '/', label: '← Boîte à idées' }}
       />
 
@@ -50,8 +50,7 @@ export default function InnovatiesPage() {
         >
           Hier ziet u waar Communities Abroad aan werkt: bestaande tools,
           lopende projecten en plannen in voorbereiding. Per innovatie zijn
-          vermeld: voor welke gebruikers het bedoeld is, wat het functionele
-          doel is, en in welke fase het zich bevindt. Inhoudelijke vragen of
+          het functionele doel en de fase vermeld. Inhoudelijke vragen of
           opmerkingen? Reageer op het forum.
         </p>
 
