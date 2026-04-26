@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 
+const NING_GATE_ENABLED = process.env.NEXT_PUBLIC_NING_GATE === 'true';
+
 function isAdmin(request: NextRequest) {
   const key = request.headers.get('x-admin-key');
   return key === process.env.ADMIN_KEY;
@@ -86,6 +88,26 @@ export async function POST(request: NextRequest) {
     body.roadmap_phase = null;
     body.functional_goal = null;
     body.user_groups = null;
+
+    // Bij actieve Ning-gate: client moet een geclaimde user_id
+    // meesturen die begint met "ning_". Net als bij sentiment is dit
+    // een lichte server-side guard tegen direct-API-misbruik dat de
+    // UI omzeilt. Het voorkomt anonieme curl-aanroepen ("created_by
+    // = 'fake'") maar niet techneuten die op nederlanders.fr in
+    // dev-tools een ning_-id verzinnen — daar is admin-moderatie het
+    // vangnet (visibility=private, status=idee).
+    if (NING_GATE_ENABLED) {
+      const claimedUserId = String(body.user_id || '');
+      if (!claimedUserId.startsWith('ning_') || claimedUserId.length <= 'ning_'.length) {
+        return NextResponse.json(
+          {
+            error:
+              'Inzendingen zijn voor leden van nederlanders.fr. Log in en probeer opnieuw.',
+          },
+          { status: 401 }
+        );
+      }
+    }
   }
 
   // forum_url is strikt admin-only (zou anders willekeurige externe

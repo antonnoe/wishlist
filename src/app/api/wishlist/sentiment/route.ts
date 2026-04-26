@@ -3,6 +3,8 @@ import { getServiceClient } from '@/lib/supabase';
 
 type Sentiment = 'positive' | 'neutral' | 'negative';
 
+const NING_GATE_ENABLED = process.env.NEXT_PUBLIC_NING_GATE === 'true';
+
 export async function POST(request: NextRequest) {
   const supabase = getServiceClient();
   const body = await request.json();
@@ -21,6 +23,23 @@ export async function POST(request: NextRequest) {
 
   if (!['positive', 'neutral', 'negative'].includes(sentiment)) {
     return NextResponse.json({ error: 'Invalid sentiment' }, { status: 400 });
+  }
+
+  // V1-gate: ondiepe server-side controle dat user_id de Ning-prefix
+  // heeft. Stopt anonieme/script-kiddie API-aanroepen die met willekeurige
+  // user_id's stemmen (de UI laat dat niet toe). Niet kogelvrij — een
+  // techneut die op nederlanders.fr in dev-tools rommelt kan een
+  // verzonnen "ning_jan_jansen" sturen. Voor échte enforcement is een
+  // server-verified Ning-session of HMAC-handshake nodig (V2, niet
+  // gekozen door Anton in deze fase).
+  if (NING_GATE_ENABLED && !user_id.startsWith('ning_')) {
+    return NextResponse.json(
+      {
+        error:
+          'Reageren is voor leden van nederlanders.fr. Log in en probeer opnieuw.',
+      },
+      { status: 401 }
+    );
   }
 
   // Smileys werken alleen op gebruikersideeën (track='idea').

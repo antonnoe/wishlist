@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { PlatformItem } from '@/lib/types';
 import SiteHeader from '@/components/SiteHeader';
 import PlatformDropdown from '@/components/PlatformDropdown';
+import LoginRequiredBanner from '@/components/LoginRequiredBanner';
+import { useNingAuth, ningUserIdOrNull } from '@/components/NingAuthProvider';
 
 const ALLOWED_DOMAINS = [
   'infofrankrijk.com',
@@ -15,6 +17,7 @@ const ALLOWED_DOMAINS = [
 ];
 
 export default function IdeeIndienenPage() {
+  const auth = useNingAuth();
   const [platforms, setPlatforms] = useState<PlatformItem[]>([]);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -25,6 +28,18 @@ export default function IdeeIndienenPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Bij actieve gate + ingelogd: forumnaam wordt vooraf gevuld en vergrendeld
+  const lockedForumName = auth.gateEnabled && auth.user
+    ? auth.user.username
+    : null;
+  const canSubmit = !auth.gateEnabled || !!auth.user;
+
+  useEffect(() => {
+    if (lockedForumName && !formForumName) {
+      setFormForumName(lockedForumName);
+    }
+  }, [lockedForumName, formForumName]);
 
   useEffect(() => {
     fetch('/api/platforms')
@@ -37,6 +52,7 @@ export default function IdeeIndienenPage() {
 
   async function handleSubmit() {
     setError(null);
+    if (!canSubmit) return;
     if (!formTitle.trim() || !formForumName.trim()) return;
 
     const trimmedUrl = formUrl.trim();
@@ -71,6 +87,7 @@ export default function IdeeIndienenPage() {
 
     setSubmitting(true);
     try {
+      const ningId = ningUserIdOrNull(auth.user);
       const res = await fetch('/api/wishlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,6 +96,10 @@ export default function IdeeIndienenPage() {
           description: formDescription.trim() || null,
           platform: formPlatform,
           created_by: formForumName.trim(),
+          // user_id wordt server-side gevalideerd wanneer
+          // NEXT_PUBLIC_NING_GATE='true'. Komt van de Ning-postMessage,
+          // niet van de gebruiker-typt-input.
+          user_id: ningId,
           visibility: 'private',
           track: 'idea',
           status: 'idee',
@@ -114,6 +135,9 @@ export default function IdeeIndienenPage() {
       />
 
       <main className="max-w-2xl mx-auto px-4 py-6">
+        {auth.gateEnabled && !auth.loading && !auth.user && (
+          <LoginRequiredBanner message="Log in op nederlanders.fr om een idee in te dienen" />
+        )}
         {submitted ? (
           <div
             className="rounded-lg border p-6"
@@ -175,11 +199,26 @@ export default function IdeeIndienenPage() {
                   <input
                     type="text"
                     value={formForumName}
-                    onChange={(e) => setFormForumName(e.target.value)}
+                    onChange={(e) => {
+                      if (!lockedForumName) setFormForumName(e.target.value);
+                    }}
                     placeholder="Zoals op nederlanders.fr"
+                    readOnly={!!lockedForumName}
                     className="w-full rounded-md border px-3 py-2 text-sm"
-                    style={{ borderColor: 'var(--border)' }}
+                    style={{
+                      borderColor: 'var(--border)',
+                      background: lockedForumName ? 'var(--primary-light)' : undefined,
+                      cursor: lockedForumName ? 'not-allowed' : undefined,
+                    }}
                   />
+                  {lockedForumName && (
+                    <span
+                      className="text-xs"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      Automatisch ingevuld vanuit uw nederlanders.fr-account.
+                    </span>
+                  )}
                 </div>
                 <div>
                   <label
@@ -298,10 +337,11 @@ export default function IdeeIndienenPage() {
                 onClick={handleSubmit}
                 disabled={
                   submitting ||
+                  !canSubmit ||
                   !formTitle.trim() ||
                   !formForumName.trim()
                 }
-                className="rounded-md px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-md px-5 py-2 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: 'var(--primary)' }}
               >
                 {submitting ? 'Bezig...' : 'Indienen'}
