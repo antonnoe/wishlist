@@ -220,14 +220,17 @@ function InnovationCard({ item }: { item: WishlistItem }) {
         >
           → Detailpagina
         </Link>
-        <a
-          href="https://www.nederlanders.fr"
-          target="_top"
-          className="text-sm hover:underline"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          → Reageer op het forum
-        </a>
+        {item.forum_url && (
+          <a
+            href={item.forum_url}
+            target="_top"
+            rel="noopener noreferrer"
+            className="text-sm hover:underline"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            → Reageer op het forum
+          </a>
+        )}
       </footer>
     </article>
   );

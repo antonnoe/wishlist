@@ -69,31 +69,6 @@ export default function LandingPage() {
         </section>
 
         <FAQ items={FAQ_ITEMS} />
-
-        <section
-          className="mt-8 rounded-lg border p-5"
-          style={{
-            background: 'var(--bg-card)',
-            borderColor: 'var(--border)',
-          }}
-        >
-          <h2 className="text-lg mb-2">Inhoudelijke discussie?</h2>
-          <p
-            className="text-sm mb-3"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            Voor uitgebreide vragen, ervaringen of inhoudelijk gesprek over een
-            innovatie of idee verwijzen we naar het forum.
-          </p>
-          <a
-            href="https://www.nederlanders.fr"
-            target="_top"
-            className="inline-block rounded-md px-4 py-2 text-sm font-medium text-white"
-            style={{ background: 'var(--primary)' }}
-          >
-            → Naar het forum
-          </a>
-        </section>
       </main>
 
       <footer className="max-w-3xl mx-auto px-4 py-8 text-right">

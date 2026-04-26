@@ -221,14 +221,17 @@ function Detail({ item }: { item: WishlistItem }) {
         className="pt-4 mt-4 border-t flex items-center gap-3 flex-wrap"
         style={{ borderColor: 'var(--border)' }}
       >
-        <a
-          href="https://www.nederlanders.fr"
-          target="_top"
-          className="rounded-md px-4 py-2 text-sm font-medium text-white"
-          style={{ background: 'var(--primary)', textDecoration: 'none' }}
-        >
-          → Reageer op het forum
-        </a>
+        {item.forum_url && (
+          <a
+            href={item.forum_url}
+            target="_top"
+            rel="noopener noreferrer"
+            className="rounded-md px-4 py-2 text-sm font-medium text-white"
+            style={{ background: 'var(--primary)', textDecoration: 'none' }}
+          >
+            → Reageer op het forum
+          </a>
+        )}
         <Link
           href="/innovaties"
           className="text-sm hover:underline"

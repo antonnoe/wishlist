@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
   const supabase = getServiceClient();
   const body = await request.json();
   const authorized = isAuthorized(request);
+  const adminOnly = isAdmin(request);
 
   if (!authorized) {
     body.status = 'idee';
@@ -85,6 +86,13 @@ export async function POST(request: NextRequest) {
     body.roadmap_phase = null;
     body.functional_goal = null;
     body.user_groups = null;
+  }
+
+  // forum_url is strikt admin-only (zou anders willekeurige externe
+  // links op de site kunnen plaatsen). Claude-key wordt expliciet
+  // niet toegelaten, idem als bij /api/wishlist/satisfaction.
+  if (!adminOnly) {
+    body.forum_url = null;
   }
 
   // Server-side URL-validatie (alleen eigen domeinen toegestaan voor niet-admins)
@@ -119,6 +127,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // forum_url: admin-only veld, vrij domein (Anton beheert handmatig).
+  let sanitizedForumUrl: string | null = null;
+  if (body.forum_url) {
+    try {
+      const parsed = new URL(body.forum_url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return NextResponse.json({ error: 'Invalid forum_url protocol' }, { status: 400 });
+      }
+      sanitizedForumUrl = parsed.toString();
+    } catch {
+      return NextResponse.json({ error: 'Invalid forum_url' }, { status: 400 });
+    }
+  }
+
   const VALID_TRACKS = ['roadmap', 'idea'] as const;
   const VALID_PHASES = ['concept','planning','uitvoering','oplevering','evaluatie'] as const;
   const VALID_GROUPS = ['nieuwkomer','expat','ondernemer','twijfelaar'] as const;
@@ -146,6 +168,7 @@ export async function POST(request: NextRequest) {
       roadmap_phase,
       functional_goal: track === 'roadmap' ? (body.functional_goal || null) : null,
       user_groups: track === 'roadmap' ? user_groups : null,
+      forum_url: sanitizedForumUrl,
     })
     .select()
     .single();
@@ -185,6 +208,25 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'user_groups must be an array' }, { status: 400 });
     }
     updates.user_groups = updates.user_groups.filter((g: string) => VALID_GROUPS.includes(g));
+  }
+  // forum_url is strikt admin-only (Claude-key wordt expliciet niet
+  // toegelaten — anders kan automation external links plaatsen).
+  if (updates.forum_url !== undefined) {
+    if (!isAdmin(request)) {
+      delete updates.forum_url;
+    } else if (updates.forum_url === null || updates.forum_url === '') {
+      updates.forum_url = null;
+    } else {
+      try {
+        const parsed = new URL(updates.forum_url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return NextResponse.json({ error: 'Invalid forum_url protocol' }, { status: 400 });
+        }
+        updates.forum_url = parsed.toString();
+      } catch {
+        return NextResponse.json({ error: 'Invalid forum_url' }, { status: 400 });
+      }
+    }
   }
 
   // Bij overgang naar track='idea' moeten roadmap-velden leeg, anders
