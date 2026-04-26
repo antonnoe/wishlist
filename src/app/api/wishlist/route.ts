@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const authorized = isAuthorized(request);
 
+  const id = searchParams.get('id');
   const platform = searchParams.get('platform');
   const status = searchParams.get('status');
   const visibility = searchParams.get('visibility');
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
     query = query.eq('visibility', visibility);
   }
 
+  if (id) query = query.eq('id', id);
   if (platform) query = query.eq('platform', platform);
   if (status) query = query.eq('status', status);
   if (track === 'roadmap' || track === 'idea') query = query.eq('track', track);
@@ -183,6 +185,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'user_groups must be an array' }, { status: 400 });
     }
     updates.user_groups = updates.user_groups.filter((g: string) => VALID_GROUPS.includes(g));
+  }
+
+  // Bij overgang naar track='idea' moeten roadmap-velden leeg, anders
+  // krijg je inconsistente rijen (idea-item met fase/doel/doelgroepen).
+  if (updates.track === 'idea') {
+    updates.roadmap_phase = null;
+    updates.functional_goal = null;
+    updates.user_groups = null;
   }
 
   const { data, error } = await supabase

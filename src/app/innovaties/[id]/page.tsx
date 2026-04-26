@@ -25,19 +25,16 @@ export default function InnovatieDetailPage({
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    fetch('/api/wishlist?track=roadmap&visibility=public')
+    fetch(
+      `/api/wishlist?id=${encodeURIComponent(id)}&track=roadmap&visibility=public`
+    )
       .then((res) => res.json())
-      .then((data: WishlistItem[]) => {
-        if (!Array.isArray(data)) {
+      .then((data: WishlistItem[] | { error: string }) => {
+        if (!Array.isArray(data) || data.length === 0) {
           setNotFound(true);
           return;
         }
-        const found = data.find((i) => i.id === id) || null;
-        if (!found) {
-          setNotFound(true);
-        } else {
-          setItem(found);
-        }
+        setItem(data[0]);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));

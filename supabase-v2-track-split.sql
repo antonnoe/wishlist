@@ -43,6 +43,20 @@ ALTER TABLE wishlist
     OR roadmap_phase IN ('concept','planning','uitvoering','oplevering','evaluatie')
   );
 
+-- Coupling: roadmap-specifieke velden mogen alleen gevuld zijn bij
+-- track='roadmap'. Voorkomt orphaned data na PATCH naar track='idea'.
+ALTER TABLE wishlist DROP CONSTRAINT IF EXISTS wishlist_track_roadmap_fields_check;
+ALTER TABLE wishlist
+  ADD CONSTRAINT wishlist_track_roadmap_fields_check
+  CHECK (
+    track = 'roadmap'
+    OR (
+      roadmap_phase IS NULL
+      AND functional_goal IS NULL
+      AND user_groups IS NULL
+    )
+  );
+
 
 -- 3. Index op track voor snellere filtering
 -- ----------------------------------------------------------------------------
@@ -81,6 +95,7 @@ WHERE created_by = 'admin'
 --
 --   ALTER TABLE wishlist DROP CONSTRAINT IF EXISTS wishlist_track_check;
 --   ALTER TABLE wishlist DROP CONSTRAINT IF EXISTS wishlist_roadmap_phase_check;
+--   ALTER TABLE wishlist DROP CONSTRAINT IF EXISTS wishlist_track_roadmap_fields_check;
 --   DROP INDEX IF EXISTS idx_wishlist_track;
 --   DROP INDEX IF EXISTS idx_wishlist_roadmap_phase;
 --   ALTER TABLE wishlist

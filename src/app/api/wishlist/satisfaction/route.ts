@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 
 function isAuthorized(request: NextRequest) {
+  // Mutatie van productie-tellers: alleen admin-key. Claude-credentials
+  // worden hier bewust niet geaccepteerd; voor automatische tool-ingest
+  // komt later een dedicated secret.
   const adminKey = request.headers.get('x-admin-key');
-  const claudeKey = request.headers.get('x-claude-key');
-  return (
-    adminKey === process.env.ADMIN_KEY ||
-    claudeKey === process.env.CLAUDE_API_KEY
-  );
+  return adminKey === process.env.ADMIN_KEY;
 }
 
 // POST /api/wishlist/satisfaction
@@ -33,14 +32,14 @@ export async function POST(request: NextRequest) {
   }
 
   const updates: Record<string, number> = {};
-  if (typeof positive === 'number' && positive >= 0) {
-    updates.live_satisfaction_positive = Math.floor(positive);
+  if (Number.isFinite(positive) && (positive as number) >= 0) {
+    updates.live_satisfaction_positive = Math.floor(positive as number);
   }
-  if (typeof neutral === 'number' && neutral >= 0) {
-    updates.live_satisfaction_neutral = Math.floor(neutral);
+  if (Number.isFinite(neutral) && (neutral as number) >= 0) {
+    updates.live_satisfaction_neutral = Math.floor(neutral as number);
   }
-  if (typeof negative === 'number' && negative >= 0) {
-    updates.live_satisfaction_negative = Math.floor(negative);
+  if (Number.isFinite(negative) && (negative as number) >= 0) {
+    updates.live_satisfaction_negative = Math.floor(negative as number);
   }
 
   if (Object.keys(updates).length === 0) {
