@@ -9,9 +9,6 @@ import {
   ROADMAP_PHASE_LABELS,
   ROADMAP_PHASE_DESCRIPTIONS,
   RoadmapPhase,
-  USER_GROUPS,
-  USER_GROUP_LABELS,
-  UserGroup,
   SENTIMENT_EMOJI,
 } from '@/lib/types';
 import SiteHeader from '@/components/SiteHeader';
@@ -21,7 +18,6 @@ export default function InnovatiesPage() {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterPhase, setFilterPhase] = useState<'all' | RoadmapPhase>('all');
-  const [filterGroup, setFilterGroup] = useState<'all' | UserGroup>('all');
 
   useEffect(() => {
     fetch('/api/wishlist?track=roadmap&visibility=public')
@@ -36,10 +32,6 @@ export default function InnovatiesPage() {
   const filtered = items.filter((item) => {
     if (filterPhase !== 'all' && item.roadmap_phase !== filterPhase)
       return false;
-    if (filterGroup !== 'all') {
-      if (!item.user_groups || !item.user_groups.includes(filterGroup))
-        return false;
-    }
     return true;
   });
 
@@ -79,25 +71,6 @@ export default function InnovatiesPage() {
             {ROADMAP_PHASES.map((p) => (
               <option key={p} value={p}>
                 {ROADMAP_PHASE_LABELS[p]}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filterGroup}
-            onChange={(e) =>
-              setFilterGroup(e.target.value as 'all' | UserGroup)
-            }
-            className="rounded-md border px-3 py-2 text-sm"
-            style={{
-              borderColor: 'var(--border)',
-              fontFamily: 'Mulish, sans-serif',
-            }}
-          >
-            <option value="all">Alle gebruikersgroepen</option>
-            {USER_GROUPS.map((g) => (
-              <option key={g} value={g}>
-                {USER_GROUP_LABELS[g]}
               </option>
             ))}
           </select>
@@ -158,30 +131,6 @@ function InnovationCard({ item }: { item: WishlistItem }) {
       </header>
 
       <dl className="grid grid-cols-1 sm:grid-cols-[max-content_1fr] gap-x-4 gap-y-1 mb-3 text-sm">
-        {item.user_groups && item.user_groups.length > 0 && (
-          <>
-            <dt
-              className="font-medium"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              Voor:
-            </dt>
-            <dd className="flex flex-wrap gap-1">
-              {item.user_groups.map((g) => (
-                <span
-                  key={g}
-                  className="text-xs px-2 py-0.5 rounded"
-                  style={{
-                    background: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                  }}
-                >
-                  {USER_GROUP_LABELS[g]}
-                </span>
-              ))}
-            </dd>
-          </>
-        )}
         {item.functional_goal && (
           <>
             <dt
