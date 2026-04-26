@@ -67,21 +67,34 @@ CREATE INDEX IF NOT EXISTS idx_wishlist_roadmap_phase ON wishlist(roadmap_phase)
 
 -- 4. Eenmalige classificatie van bestaande data
 -- ----------------------------------------------------------------------------
--- Anton's items (created_by = 'admin') worden roadmap-items.
--- Alleen items die nog op de DEFAULT 'idea' staan worden geconverteerd,
--- zodat herhaaldelijke runs handmatige correcties niet overschrijven.
-UPDATE wishlist
-SET track = 'roadmap',
-    roadmap_phase = CASE status
-      WHEN 'live'    THEN 'oplevering'
-      WHEN 'bezig'   THEN 'uitvoering'
-      WHEN 'gepland' THEN 'planning'
-      WHEN 'idee'    THEN 'concept'
-      ELSE roadmap_phase
-    END
-WHERE created_by = 'admin'
-  AND track = 'idea'
-  AND roadmap_phase IS NULL;
+-- Anton's items (created_by = 'admin') worden roadmap-items. De
+-- classificatie is strikt one-shot: zodra er ten minste één row met
+-- track='roadmap' bestaat (van deze migratie of handmatige admin-actie)
+-- wordt deze stap overgeslagen. Daardoor kan een latere admin-correctie
+-- (bv. admin-item handmatig terug naar track='idea' geschoven) bij een
+-- rerun van dit script niet ongedaan worden gemaakt.
+DO $$
+DECLARE
+  already_classified boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM wishlist WHERE track = 'roadmap'
+  ) INTO already_classified;
+
+  IF NOT already_classified THEN
+    UPDATE wishlist
+    SET track = 'roadmap',
+        roadmap_phase = CASE status
+          WHEN 'live'    THEN 'oplevering'
+          WHEN 'bezig'   THEN 'uitvoering'
+          WHEN 'gepland' THEN 'planning'
+          WHEN 'idee'    THEN 'concept'
+          ELSE roadmap_phase
+        END
+    WHERE created_by = 'admin';
+  END IF;
+END;
+$$;
 
 -- Gebruikersitems blijven track='idea' (reeds default). Geen actie nodig.
 
