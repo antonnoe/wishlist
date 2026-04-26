@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status');
   const visibility = searchParams.get('visibility');
   const userId = searchParams.get('user_id');
+  const track = searchParams.get('track');
 
   let query = supabase
     .from('wishlist')
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
 
   if (platform) query = query.eq('platform', platform);
   if (status) query = query.eq('status', status);
+  if (track === 'roadmap' || track === 'idea') query = query.eq('track', track);
 
   const { data, error } = await query;
 
@@ -77,6 +79,10 @@ export async function POST(request: NextRequest) {
   if (!authorized) {
     body.status = 'idee';
     body.visibility = 'private';
+    body.track = 'idea';
+    body.roadmap_phase = null;
+    body.functional_goal = null;
+    body.user_groups = null;
   }
 
   // Server-side URL-validatie (alleen eigen domeinen toegestaan voor niet-admins)
@@ -111,6 +117,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const VALID_TRACKS = ['roadmap', 'idea'] as const;
+  const VALID_PHASES = ['concept','planning','uitvoering','oplevering','evaluatie'] as const;
+  const VALID_GROUPS = ['nieuwkomer','expat','ondernemer','twijfelaar'] as const;
+
+  const track = VALID_TRACKS.includes(body.track) ? body.track : 'idea';
+  const roadmap_phase = track === 'roadmap' && VALID_PHASES.includes(body.roadmap_phase)
+    ? body.roadmap_phase
+    : null;
+  const user_groups = Array.isArray(body.user_groups)
+    ? body.user_groups.filter((g: string) => VALID_GROUPS.includes(g as typeof VALID_GROUPS[number]))
+    : null;
+
   const { data, error } = await supabase
     .from('wishlist')
     .insert({
@@ -122,6 +140,10 @@ export async function POST(request: NextRequest) {
       created_by: body.created_by || 'anonymous',
       admin_note: body.admin_note || null,
       url: sanitizedUrl,
+      track,
+      roadmap_phase,
+      functional_goal: track === 'roadmap' ? (body.functional_goal || null) : null,
+      user_groups: track === 'roadmap' ? user_groups : null,
     })
     .select()
     .single();
@@ -144,6 +166,23 @@ export async function PATCH(request: NextRequest) {
 
   if (!id) {
     return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  }
+
+  const VALID_TRACKS = ['roadmap', 'idea'];
+  const VALID_PHASES = ['concept','planning','uitvoering','oplevering','evaluatie'];
+  const VALID_GROUPS = ['nieuwkomer','expat','ondernemer','twijfelaar'];
+
+  if (updates.track !== undefined && !VALID_TRACKS.includes(updates.track)) {
+    return NextResponse.json({ error: 'Invalid track' }, { status: 400 });
+  }
+  if (updates.roadmap_phase != null && !VALID_PHASES.includes(updates.roadmap_phase)) {
+    return NextResponse.json({ error: 'Invalid roadmap_phase' }, { status: 400 });
+  }
+  if (updates.user_groups !== undefined && updates.user_groups !== null) {
+    if (!Array.isArray(updates.user_groups)) {
+      return NextResponse.json({ error: 'user_groups must be an array' }, { status: 400 });
+    }
+    updates.user_groups = updates.user_groups.filter((g: string) => VALID_GROUPS.includes(g));
   }
 
   const { data, error } = await supabase
