@@ -11,11 +11,8 @@ import {
   Visibility,
   Track,
   RoadmapPhase,
-  UserGroup,
   ROADMAP_PHASES,
   ROADMAP_PHASE_LABELS,
-  USER_GROUPS,
-  USER_GROUP_LABELS,
 } from '@/lib/types';
 
 type Tab = 'items' | 'platforms';
@@ -42,7 +39,6 @@ export default function AdminPage() {
   const [formTrack, setFormTrack] = useState<Track>('roadmap');
   const [formPhase, setFormPhase] = useState<RoadmapPhase>('concept');
   const [formGoal, setFormGoal] = useState('');
-  const [formGroups, setFormGroups] = useState<UserGroup[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit
@@ -58,7 +54,6 @@ export default function AdminPage() {
   const [editTrack, setEditTrack] = useState<Track>('idea');
   const [editPhase, setEditPhase] = useState<RoadmapPhase | ''>('');
   const [editGoal, setEditGoal] = useState('');
-  const [editGroups, setEditGroups] = useState<UserGroup[]>([]);
   const [editSatPos, setEditSatPos] = useState<number>(0);
   const [editSatNeu, setEditSatNeu] = useState<number>(0);
   const [editSatNeg, setEditSatNeg] = useState<number>(0);
@@ -131,12 +126,12 @@ export default function AdminPage() {
           track: formTrack,
           roadmap_phase: formTrack === 'roadmap' ? formPhase : null,
           functional_goal: formTrack === 'roadmap' ? (formGoal.trim() || null) : null,
-          user_groups: formTrack === 'roadmap' ? formGroups : null,
+          user_groups: null,
         }),
       });
       setFormTitle(''); setFormDescription(''); setFormPlatform('overig');
       setFormStatus('idee'); setFormVisibility('public');
-      setFormTrack('roadmap'); setFormPhase('concept'); setFormGoal(''); setFormGroups([]);
+      setFormTrack('roadmap'); setFormPhase('concept'); setFormGoal('');
       setShowForm(false);
       fetchData();
     } finally { setSubmitting(false); }
@@ -159,7 +154,7 @@ export default function AdminPage() {
         track: editTrack,
         roadmap_phase: editTrack === 'roadmap' && editPhase ? editPhase : null,
         functional_goal: editTrack === 'roadmap' ? (editGoal.trim() || null) : null,
-        user_groups: editTrack === 'roadmap' ? editGroups : null,
+        user_groups: null,
       }),
     });
     if (editTrack === 'roadmap') {
@@ -192,7 +187,6 @@ export default function AdminPage() {
     setEditTrack(item.track || 'idea');
     setEditPhase(item.roadmap_phase || '');
     setEditGoal(item.functional_goal || '');
-    setEditGroups(item.user_groups || []);
     setEditSatPos(item.live_satisfaction_positive ?? 0);
     setEditSatNeu(item.live_satisfaction_neutral ?? 0);
     setEditSatNeg(item.live_satisfaction_negative ?? 0);
@@ -451,23 +445,6 @@ export default function AdminPage() {
                           placeholder="Wat heeft de gebruiker hieraan?"
                           className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
                       </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Doelgroepen</label>
-                        <div className="flex flex-wrap gap-3">
-                          {USER_GROUPS.map((g) => {
-                            const checked = formGroups.includes(g);
-                            return (
-                              <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
-                                <input type="checkbox" checked={checked}
-                                  onChange={() => {
-                                    setFormGroups(checked ? formGroups.filter((x) => x !== g) : [...formGroups, g]);
-                                  }} />
-                                <span>{USER_GROUP_LABELS[g]}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
                     </>
                   )}
                   <div className="flex items-end">
@@ -551,23 +528,6 @@ export default function AdminPage() {
                             <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)}
                               placeholder="Functioneel doel — wat heeft de gebruiker hieraan?"
                               className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
-                            <div>
-                              <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Doelgroepen:</div>
-                              <div className="flex flex-wrap gap-3">
-                                {USER_GROUPS.map((g) => {
-                                  const checked = editGroups.includes(g);
-                                  return (
-                                    <label key={g} className="flex items-center gap-1 text-xs cursor-pointer">
-                                      <input type="checkbox" checked={checked}
-                                        onChange={() => {
-                                          setEditGroups(checked ? editGroups.filter((x) => x !== g) : [...editGroups, g]);
-                                        }} />
-                                      <span>{USER_GROUP_LABELS[g]}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            </div>
                             <div>
                               <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
                                 Tevredenheid bij gebruik (handmatige invoer; later vervangen door tool-API):

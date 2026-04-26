@@ -7,8 +7,6 @@ import {
   WishlistItem,
   ROADMAP_PHASE_LABELS,
   ROADMAP_PHASE_DESCRIPTIONS,
-  USER_GROUP_LABELS,
-  USER_GROUP_DESCRIPTIONS,
   SENTIMENT_EMOJI,
 } from '@/lib/types';
 import SiteHeader from '@/components/SiteHeader';
@@ -119,34 +117,6 @@ function Detail({ item }: { item: WishlistItem }) {
           </span>
         )}
       </header>
-
-      {item.user_groups && item.user_groups.length > 0 && (
-        <section className="mb-5">
-          <h3
-            className="text-sm uppercase tracking-wide mb-2"
-            style={{
-              fontFamily: 'Mulish, sans-serif',
-              color: 'var(--text-muted)',
-              fontWeight: 600,
-            }}
-          >
-            Voor wie
-          </h3>
-          <ul className="space-y-1.5 text-sm">
-            {item.user_groups.map((g) => (
-              <li key={g} style={{ color: 'var(--text)' }}>
-                <span
-                  className="font-semibold"
-                  style={{ color: 'var(--primary)' }}
-                >
-                  {USER_GROUP_LABELS[g]}
-                </span>{' '}
-                — {USER_GROUP_DESCRIPTIONS[g]}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {item.functional_goal && (
         <section className="mb-5">
