@@ -25,9 +25,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid sentiment' }, { status: 400 });
   }
 
-  // Server-side gate: alleen Ning-gebruikers (user_id begint met ning_)
-  // mogen smileys plaatsen wanneer de gate aanstaat. Beschermt tegen
-  // direct API-aanroepen die de UI omzeilen.
+  // V1-gate: ondiepe server-side controle dat user_id de Ning-prefix
+  // heeft. Stopt anonieme/script-kiddie API-aanroepen die met willekeurige
+  // user_id's stemmen (de UI laat dat niet toe). Niet kogelvrij — een
+  // techneut die op nederlanders.fr in dev-tools rommelt kan een
+  // verzonnen "ning_jan_jansen" sturen. Voor échte enforcement is een
+  // server-verified Ning-session of HMAC-handshake nodig (V2, niet
+  // gekozen door Anton in deze fase).
   if (NING_GATE_ENABLED && !user_id.startsWith('ning_')) {
     return NextResponse.json(
       {

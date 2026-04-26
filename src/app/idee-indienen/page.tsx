@@ -6,7 +6,7 @@ import { PlatformItem } from '@/lib/types';
 import SiteHeader from '@/components/SiteHeader';
 import PlatformDropdown from '@/components/PlatformDropdown';
 import LoginRequiredBanner from '@/components/LoginRequiredBanner';
-import { useNingAuth } from '@/components/NingAuthProvider';
+import { useNingAuth, ningUserIdOrNull } from '@/components/NingAuthProvider';
 
 const ALLOWED_DOMAINS = [
   'infofrankrijk.com',
@@ -87,6 +87,7 @@ export default function IdeeIndienenPage() {
 
     setSubmitting(true);
     try {
+      const ningId = ningUserIdOrNull(auth.user);
       const res = await fetch('/api/wishlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,6 +96,10 @@ export default function IdeeIndienenPage() {
           description: formDescription.trim() || null,
           platform: formPlatform,
           created_by: formForumName.trim(),
+          // user_id wordt server-side gevalideerd wanneer
+          // NEXT_PUBLIC_NING_GATE='true'. Komt van de Ning-postMessage,
+          // niet van de gebruiker-typt-input.
+          user_id: ningId,
           visibility: 'private',
           track: 'idea',
           status: 'idee',

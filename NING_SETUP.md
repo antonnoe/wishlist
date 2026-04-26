@@ -28,6 +28,23 @@ script (Google Analytics + iframe-height-listener) blijft intact.
 ```html
 <script>
 (function () {
+  // Alleen iframes met deze URL-substring krijgen de username. Voorkomt
+  // dat third-party widgets (bv. embed-spelers, advertenties) onnodig
+  // naam-data ontvangen. Pas aan als jouw productie-URL anders is.
+  var BOITE_HOST_PATTERNS = [/\.vercel\.app$/i];
+
+  function isBoiteIframe(iframe) {
+    try {
+      var src = iframe.getAttribute('src') || '';
+      if (!src) return false;
+      var url = new URL(src, location.href);
+      for (var i = 0; i < BOITE_HOST_PATTERNS.length; i++) {
+        if (BOITE_HOST_PATTERNS[i].test(url.hostname)) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   // Detecteer ingelogde Ning-gebruiker via meerdere methoden.
   function getNingUser() {
     // Methode 1: Ning's eigen JS-API (xn.currentUser)
@@ -51,9 +68,7 @@ script (Google Analytics + iframe-height-listener) blijft intact.
     } catch (e) {}
 
     // Methode 3: DOM-scraping — zoek profile-link in account-menu.
-    // Ning rendert de eigen profile-URL in de header bij ingelogde gebruikers.
     try {
-      // Voorkeur voor account-widget
       var widget = document.querySelector('#xj_module_account, .xg_widget_main_account, [data-component*="account"]');
       var scope = widget || document;
       var anchors = scope.querySelectorAll('a[href*="/profile/"]');
@@ -72,37 +87,51 @@ script (Google Analytics + iframe-height-listener) blijft intact.
     return null;
   }
 
-  function postUserToIframes() {
+  function postUserToBoite() {
     var user = getNingUser();
     var iframes = document.querySelectorAll('iframe');
     for (var i = 0; i < iframes.length; i++) {
+      var iframe = iframes[i];
+      if (!isBoiteIframe(iframe)) continue;
       try {
-        // We sturen naar elke iframe; alleen de Boîte luistert ernaar
-        // en doet zelf de origin-check.
-        iframes[i].contentWindow.postMessage(
+        // Specifieke targetOrigin (de iframe-eigen origin) i.p.v. '*':
+        // hierdoor lekt de username niet als de iframe-src tijdens
+        // navigation verandert.
+        var src = iframe.getAttribute('src') || '';
+        var origin = new URL(src, location.href).origin;
+        iframe.contentWindow.postMessage(
           { type: 'ning-user', user: user },
-          '*'
+          origin
         );
       } catch (e) {}
     }
   }
 
-  // Stuur direct, en nogmaals na 500ms en 2000ms voor het geval
-  // de iframe iets later laadt.
+  // Initial broadcast na load + retries voor late iframe-laadtijd.
   if (document.readyState === 'complete') {
-    postUserToIframes();
+    postUserToBoite();
   } else {
-    window.addEventListener('load', postUserToIframes);
+    window.addEventListener('load', postUserToBoite);
   }
-  setTimeout(postUserToIframes, 500);
-  setTimeout(postUserToIframes, 2000);
+  setTimeout(postUserToBoite, 500);
+  setTimeout(postUserToBoite, 2000);
 
-  // Als de iframe expliciet vraagt om de user (bv. na late hydratie),
-  // sturen we 'm direct.
+  // Reageer op verzoeken van de iframe — maar alleen als origin matcht
+  // (anders kan een third-party iframe op de Ning-pagina actief de
+  // user-data opvragen).
   window.addEventListener('message', function (e) {
-    if (e && e.data && e.data.type === 'ning-user-request') {
-      postUserToIframes();
+    if (!e || !e.data || e.data.type !== 'ning-user-request') return;
+    try {
+      var originHost = new URL(e.origin).hostname;
+      var ok = false;
+      for (var i = 0; i < BOITE_HOST_PATTERNS.length; i++) {
+        if (BOITE_HOST_PATTERNS[i].test(originHost)) { ok = true; break; }
+      }
+      if (!ok) return;
+    } catch (err) {
+      return;
     }
+    postUserToBoite();
   });
 })();
 </script>

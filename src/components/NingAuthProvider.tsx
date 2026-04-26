@@ -8,8 +8,14 @@ import {
   useState,
 } from 'react';
 
-// Origin van de Ning-host. Berichten van andere origins worden genegeerd.
-const NING_ORIGIN = 'https://nederlandersfr.ning.com';
+// Geaccepteerde origins voor postMessage. De Ning-pagina kan vanaf
+// drie URL's geserveerd worden afhankelijk van hoe een bezoeker
+// binnenkomt: het raw Ning-domein, of het custom-domain met of zonder www.
+const TRUSTED_PARENT_ORIGINS = [
+  'https://nederlandersfr.ning.com',
+  'https://www.nederlanders.fr',
+  'https://nederlanders.fr',
+] as const;
 
 // Stel hoe lang we wachten op een postMessage van Ning voordat we
 // "niet ingelogd" tonen. Houd kort genoeg dat de UI niet aanvoelt
@@ -53,8 +59,8 @@ export function NingAuthProvider({
     if (!gateEnabled) return;
 
     function handleMessage(e: MessageEvent) {
-      // Strikte origin-check — bericht moet van Ning komen.
-      if (e.origin !== NING_ORIGIN) return;
+      // Strikte origin-check — bericht moet van een vertrouwde parent komen.
+      if (!TRUSTED_PARENT_ORIGINS.includes(e.origin as typeof TRUSTED_PARENT_ORIGINS[number])) return;
       const data = e.data as { type?: string; user?: NingUser | null };
       if (!data || data.type !== 'ning-user') return;
       setUser(data.user ?? null);
@@ -65,9 +71,17 @@ export function NingAuthProvider({
 
     // Vraag actief aan parent (Ning-pagina) om de gebruiker — voor het
     // geval het Ning-script al klaar was voor onze listener er was.
+    // We proberen elk vertrouwd origin; postMessage faalt stil bij
+    // mismatch en slaagt bij de juiste.
     try {
       if (window.parent !== window) {
-        window.parent.postMessage({ type: 'ning-user-request' }, NING_ORIGIN);
+        for (const origin of TRUSTED_PARENT_ORIGINS) {
+          try {
+            window.parent.postMessage({ type: 'ning-user-request' }, origin);
+          } catch {
+            /* mismatch — volgend origin proberen */
+          }
+        }
       }
     } catch {
       /* cross-origin restrictions zijn ok, parent stuurt vanzelf */

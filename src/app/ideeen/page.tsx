@@ -67,10 +67,14 @@ export default function IdeeenPage() {
     }
   }
 
+  // Re-fetch wanneer userId verandert (bv. nadat Ning-postMessage de
+  // ningUser binnenstuurt na initiële mount). Anders blijft user_sentiment
+  // leeg voor ingelogden tot de pagina handmatig herlaadt.
   useEffect(() => {
+    if (auth.loading) return; // wacht tot auth-status bekend is
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId, auth.loading]);
 
   async function handleSentiment(itemId: string, sentiment: Sentiment) {
     if (!canInteract || !userId) return;
