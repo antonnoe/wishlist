@@ -44,6 +44,7 @@ export interface WishlistItem {
   live_satisfaction_positive?: number;
   live_satisfaction_neutral?: number;
   live_satisfaction_negative?: number;
+  forum_url?: string | null;
 }
 
 export const STATUS_LABELS: Record<Status, string> = {

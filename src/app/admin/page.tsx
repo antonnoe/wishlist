@@ -54,6 +54,7 @@ export default function AdminPage() {
   const [editVisibility, setEditVisibility] = useState<Visibility>('public');
   const [editAdminNote, setEditAdminNote] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const [editForumUrl, setEditForumUrl] = useState('');
   const [editTrack, setEditTrack] = useState<Track>('idea');
   const [editPhase, setEditPhase] = useState<RoadmapPhase | ''>('');
   const [editGoal, setEditGoal] = useState('');
@@ -154,6 +155,7 @@ export default function AdminPage() {
         visibility: editVisibility,
         admin_note: editAdminNote || null,
         url: editUrl || null,
+        forum_url: editForumUrl.trim() || null,
         track: editTrack,
         roadmap_phase: editTrack === 'roadmap' && editPhase ? editPhase : null,
         functional_goal: editTrack === 'roadmap' ? (editGoal.trim() || null) : null,
@@ -186,6 +188,7 @@ export default function AdminPage() {
     setEditingId(item.id); setEditTitle(item.title); setEditDescription(item.description || '');
     setEditPlatform(item.platform); setEditStatus(item.status); setEditVisibility(item.visibility);
     setEditAdminNote(item.admin_note || ''); setEditUrl(item.url || '');
+    setEditForumUrl(item.forum_url || '');
     setEditTrack(item.track || 'idea');
     setEditPhase(item.roadmap_phase || '');
     setEditGoal(item.functional_goal || '');
@@ -512,6 +515,14 @@ export default function AdminPage() {
                         <input type="url" value={editUrl} onChange={(e) => setEditUrl(e.target.value)}
                           className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}
                           placeholder="URL (optioneel)" />
+                        <div>
+                          <input type="url" value={editForumUrl} onChange={(e) => setEditForumUrl(e.target.value)}
+                            className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}
+                            placeholder="Forum-URL (optioneel) — bv. https://www.nederlanders.fr/blog/forummigratie" />
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            Indien ingevuld verschijnt een &quot;Reageer op het forum&quot;-knop op de publieke pagina.
+                          </span>
+                        </div>
                         <div className="flex flex-wrap gap-3">
                           <PlatformSelect value={editPlatform} onChange={setEditPlatform} allItems />
                           <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as Status)}

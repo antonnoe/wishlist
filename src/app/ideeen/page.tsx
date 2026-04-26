@@ -245,6 +245,18 @@ export default function IdeeenPage() {
                 </div>
 
                 <SentimentBar item={item} onSentiment={handleSentiment} />
+
+                {item.forum_url && (
+                  <a
+                    href={item.forum_url}
+                    target="_top"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-3 text-sm hover:underline"
+                    style={{ color: 'var(--primary)', fontFamily: 'Mulish, sans-serif' }}
+                  >
+                    → Reageer op het forum
+                  </a>
+                )}
               </div>
             ))}
           </div>
