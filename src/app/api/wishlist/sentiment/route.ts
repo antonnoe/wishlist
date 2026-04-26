@@ -3,6 +3,8 @@ import { getServiceClient } from '@/lib/supabase';
 
 type Sentiment = 'positive' | 'neutral' | 'negative';
 
+const NING_GATE_ENABLED = process.env.NEXT_PUBLIC_NING_GATE === 'true';
+
 export async function POST(request: NextRequest) {
   const supabase = getServiceClient();
   const body = await request.json();
@@ -21,6 +23,19 @@ export async function POST(request: NextRequest) {
 
   if (!['positive', 'neutral', 'negative'].includes(sentiment)) {
     return NextResponse.json({ error: 'Invalid sentiment' }, { status: 400 });
+  }
+
+  // Server-side gate: alleen Ning-gebruikers (user_id begint met ning_)
+  // mogen smileys plaatsen wanneer de gate aanstaat. Beschermt tegen
+  // direct API-aanroepen die de UI omzeilen.
+  if (NING_GATE_ENABLED && !user_id.startsWith('ning_')) {
+    return NextResponse.json(
+      {
+        error:
+          'Reageren is voor leden van nederlanders.fr. Log in en probeer opnieuw.',
+      },
+      { status: 401 }
+    );
   }
 
   // Smileys werken alleen op gebruikersideeën (track='idea').

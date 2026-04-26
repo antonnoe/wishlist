@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 
+const NING_GATE_ENABLED = process.env.NEXT_PUBLIC_NING_GATE === 'true';
+
 function isAdmin(request: NextRequest) {
   const key = request.headers.get('x-admin-key');
   return key === process.env.ADMIN_KEY;
@@ -86,6 +88,21 @@ export async function POST(request: NextRequest) {
     body.roadmap_phase = null;
     body.functional_goal = null;
     body.user_groups = null;
+
+    // Bij actieve Ning-gate: created_by moet beginnen met de Ning-username.
+    // Anders: anonieme inzending wordt geweigerd.
+    if (NING_GATE_ENABLED) {
+      const submitter = String(body.created_by || '');
+      if (!submitter.trim()) {
+        return NextResponse.json(
+          {
+            error:
+              'Inzendingen zijn voor leden van nederlanders.fr. Log in en probeer opnieuw.',
+          },
+          { status: 401 }
+        );
+      }
+    }
   }
 
   // forum_url is strikt admin-only (zou anders willekeurige externe

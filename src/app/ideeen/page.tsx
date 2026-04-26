@@ -14,14 +14,17 @@ import {
 } from '@/lib/types';
 import SiteHeader from '@/components/SiteHeader';
 import PlatformDropdown from '@/components/PlatformDropdown';
+import LoginRequiredBanner from '@/components/LoginRequiredBanner';
+import { useNingAuth, ningUserIdOrNull } from '@/components/NingAuthProvider';
 
 export default function IdeeenPage() {
+  const auth = useNingAuth();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [platforms, setPlatforms] = useState<PlatformItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterPlatform, setFilterPlatform] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [userId] = useState(() => {
+  const [anonId] = useState(() => {
     if (typeof window !== 'undefined') {
       let id = localStorage.getItem('wishlist_user_id');
       if (!id) {
@@ -33,6 +36,11 @@ export default function IdeeenPage() {
     return 'anonymous';
   });
 
+  // Bij actieve gate: gebruik Ning-username; anders fallback op anonieme localStorage-id
+  const ningId = ningUserIdOrNull(auth.user);
+  const userId = auth.gateEnabled ? (ningId ?? '') : anonId;
+  const canInteract = !auth.gateEnabled || !!auth.user;
+
   const platformLabels: Record<string, string> = {};
   platforms.forEach((p) => {
     platformLabels[p.id] = p.label;
@@ -40,9 +48,11 @@ export default function IdeeenPage() {
 
   async function fetchData() {
     try {
+      // Smiley-status alleen ophalen als we een geldige user_id hebben
+      const userParam = userId ? `&user_id=${encodeURIComponent(userId)}` : '';
       const [itemsRes, platformsRes] = await Promise.all([
         fetch(
-          `/api/wishlist?track=idea&visibility=public&user_id=${encodeURIComponent(userId)}`
+          `/api/wishlist?track=idea&visibility=public${userParam}`
         ),
         fetch('/api/platforms'),
       ]);
@@ -63,6 +73,7 @@ export default function IdeeenPage() {
   }, []);
 
   async function handleSentiment(itemId: string, sentiment: Sentiment) {
+    if (!canInteract || !userId) return;
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== itemId) return item;
@@ -128,12 +139,25 @@ export default function IdeeenPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         <p
-          className="text-sm mb-6"
+          className="text-sm mb-4"
           style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}
         >
           Reageer met een smiley op ideeën van anderen, of dien uw eigen idee
           in.
         </p>
+
+        {auth.gateEnabled && !auth.loading && !auth.user && (
+          <LoginRequiredBanner />
+        )}
+
+        {auth.gateEnabled && auth.user && (
+          <p
+            className="text-xs mb-4"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            Ingelogd als <strong style={{ color: 'var(--primary)' }}>{auth.user.username}</strong>.
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <PlatformDropdown
@@ -159,17 +183,31 @@ export default function IdeeenPage() {
             ))}
           </select>
 
-          <Link
-            href="/idee-indienen"
-            className="ml-auto rounded-md px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            style={{
-              background: 'var(--primary)',
-              fontFamily: 'Mulish, sans-serif',
-              textDecoration: 'none',
-            }}
-          >
-            + Idee indienen
-          </Link>
+          {canInteract ? (
+            <Link
+              href="/idee-indienen"
+              className="ml-auto rounded-md px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{
+                background: 'var(--primary)',
+                fontFamily: 'Mulish, sans-serif',
+                textDecoration: 'none',
+              }}
+            >
+              + Idee indienen
+            </Link>
+          ) : (
+            <span
+              className="ml-auto rounded-md px-4 py-2 text-sm font-medium opacity-50 cursor-not-allowed"
+              style={{
+                background: 'var(--primary)',
+                color: '#fff',
+                fontFamily: 'Mulish, sans-serif',
+              }}
+              title="Log in op nederlanders.fr om een idee in te dienen"
+            >
+              + Idee indienen
+            </span>
+          )}
         </div>
 
         {loading ? (
@@ -244,7 +282,11 @@ export default function IdeeenPage() {
                     )}
                 </div>
 
-                <SentimentBar item={item} onSentiment={handleSentiment} />
+                <SentimentBar
+                  item={item}
+                  onSentiment={handleSentiment}
+                  disabled={!canInteract}
+                />
 
                 {item.forum_url && (
                   <a
@@ -269,9 +311,11 @@ export default function IdeeenPage() {
 function SentimentBar({
   item,
   onSentiment,
+  disabled,
 }: {
   item: WishlistItem;
   onSentiment: (id: string, s: Sentiment) => void;
+  disabled?: boolean;
 }) {
   const options: { key: Sentiment; count: number }[] = [
     { key: 'positive', count: item.positive_count },
@@ -290,15 +334,24 @@ function SentimentBar({
           <button
             key={key}
             onClick={() => onSentiment(item.id, key)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all hover:scale-105"
+            disabled={disabled}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all"
             style={{
               background: isActive ? 'var(--primary-light)' : 'transparent',
               border: isActive
                 ? '1px solid var(--primary)'
                 : '1px solid var(--border)',
               fontFamily: 'Mulish, sans-serif',
+              opacity: disabled ? 0.5 : 1,
+              cursor: disabled ? 'not-allowed' : 'pointer',
             }}
-            title={isActive ? 'Klik om weer weg te halen' : 'Uw reactie'}
+            title={
+              disabled
+                ? 'Log in op nederlanders.fr om te reageren'
+                : isActive
+                  ? 'Klik om weer weg te halen'
+                  : 'Uw reactie'
+            }
           >
             <span style={{ fontSize: '18px', lineHeight: 1 }}>
               {SENTIMENT_EMOJI[key]}
