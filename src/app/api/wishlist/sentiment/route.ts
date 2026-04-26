@@ -23,6 +23,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid sentiment' }, { status: 400 });
   }
 
+  // Smileys werken alleen op gebruikersideeën (track='idea').
+  // Voor roadmap-items is er een aparte tevredenheidsmeting vanuit de tool zelf.
+  const { data: target, error: targetError } = await supabase
+    .from('wishlist')
+    .select('track')
+    .eq('id', wishlist_id)
+    .maybeSingle();
+
+  if (targetError) {
+    return NextResponse.json({ error: targetError.message }, { status: 500 });
+  }
+  if (!target) {
+    return NextResponse.json({ error: 'Item niet gevonden' }, { status: 404 });
+  }
+  if (target.track === 'roadmap') {
+    return NextResponse.json(
+      {
+        error:
+          'Smileys werken alleen op gebruikersideeën. Voor reacties op innovaties: zie het forum.',
+      },
+      { status: 400 }
+    );
+  }
+
   // Check if user already has a sentiment for this item
   const { data: existing, error: checkError } = await supabase
     .from('wishlist_sentiments')

@@ -1,7 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { WishlistItem, PlatformItem, STATUS_LABELS, STATUS_COLORS, Status, Visibility } from '@/lib/types';
+import Link from 'next/link';
+import { useState } from 'react';
+import {
+  WishlistItem,
+  PlatformItem,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  Status,
+  Visibility,
+  Track,
+  RoadmapPhase,
+  UserGroup,
+  ROADMAP_PHASES,
+  ROADMAP_PHASE_LABELS,
+  USER_GROUPS,
+  USER_GROUP_LABELS,
+} from '@/lib/types';
 
 type Tab = 'items' | 'platforms';
 
@@ -15,6 +30,7 @@ export default function AdminPage() {
   const [filterPlatform, setFilterPlatform] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterVisibility, setFilterVisibility] = useState<string>('all');
+  const [filterTrack, setFilterTrack] = useState<string>('all');
 
   // New item form
   const [showForm, setShowForm] = useState(false);
@@ -23,6 +39,10 @@ export default function AdminPage() {
   const [formPlatform, setFormPlatform] = useState<string>('overig');
   const [formStatus, setFormStatus] = useState<Status>('idee');
   const [formVisibility, setFormVisibility] = useState<Visibility>('public');
+  const [formTrack, setFormTrack] = useState<Track>('roadmap');
+  const [formPhase, setFormPhase] = useState<RoadmapPhase>('concept');
+  const [formGoal, setFormGoal] = useState('');
+  const [formGroups, setFormGroups] = useState<UserGroup[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit
@@ -34,6 +54,13 @@ export default function AdminPage() {
   const [editVisibility, setEditVisibility] = useState<Visibility>('public');
   const [editAdminNote, setEditAdminNote] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const [editTrack, setEditTrack] = useState<Track>('idea');
+  const [editPhase, setEditPhase] = useState<RoadmapPhase | ''>('');
+  const [editGoal, setEditGoal] = useState('');
+  const [editGroups, setEditGroups] = useState<UserGroup[]>([]);
+  const [editSatPos, setEditSatPos] = useState<number>(0);
+  const [editSatNeu, setEditSatNeu] = useState<number>(0);
+  const [editSatNeg, setEditSatNeg] = useState<number>(0);
 
   const statuses = Object.keys(STATUS_LABELS) as Status[];
 
@@ -42,7 +69,6 @@ export default function AdminPage() {
   platforms.forEach(p => { platformLabels[p.id] = p.label; });
   const topLevel = platforms.filter(p => !p.parent_id);
   const children = (parentId: string) => platforms.filter(p => p.parent_id === parentId);
-  const allPlatforms = platforms.filter(p => !p.parent_id);
 
   function PlatformSelect({ value, onChange, allItems }: { value: string; onChange: (v: string) => void; allItems?: boolean }) {
     const list = allItems ? platforms : platforms.filter(p => p.visible || !p.parent_id);
@@ -95,12 +121,22 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
         body: JSON.stringify({
-          title: formTitle.trim(), description: formDescription.trim() || null,
-          platform: formPlatform, status: formStatus, visibility: formVisibility, created_by: 'admin',
+          title: formTitle.trim(),
+          description: formDescription.trim() || null,
+          platform: formPlatform,
+          status: formStatus,
+          visibility: formVisibility,
+          created_by: 'admin',
+          track: formTrack,
+          roadmap_phase: formTrack === 'roadmap' ? formPhase : null,
+          functional_goal: formTrack === 'roadmap' ? (formGoal.trim() || null) : null,
+          user_groups: formTrack === 'roadmap' ? formGroups : null,
         }),
       });
       setFormTitle(''); setFormDescription(''); setFormPlatform('overig');
-      setFormStatus('idee'); setFormVisibility('public'); setShowForm(false);
+      setFormStatus('idee'); setFormVisibility('public');
+      setFormTrack('roadmap'); setFormPhase('concept'); setFormGoal(''); setFormGroups([]);
+      setShowForm(false);
       fetchData();
     } finally { setSubmitting(false); }
   }
@@ -110,11 +146,32 @@ export default function AdminPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
       body: JSON.stringify({
-        id, title: editTitle, description: editDescription || null,
-        platform: editPlatform, status: editStatus, visibility: editVisibility,
-        admin_note: editAdminNote || null, url: editUrl || null,
+        id,
+        title: editTitle,
+        description: editDescription || null,
+        platform: editPlatform,
+        status: editStatus,
+        visibility: editVisibility,
+        admin_note: editAdminNote || null,
+        url: editUrl || null,
+        track: editTrack,
+        roadmap_phase: editTrack === 'roadmap' && editPhase ? editPhase : null,
+        functional_goal: editTrack === 'roadmap' ? (editGoal.trim() || null) : null,
+        user_groups: editTrack === 'roadmap' ? editGroups : null,
       }),
     });
+    if (editTrack === 'roadmap') {
+      await fetch('/api/wishlist/satisfaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify({
+          id,
+          positive: editSatPos,
+          neutral: editSatNeu,
+          negative: editSatNeg,
+        }),
+      });
+    }
     setEditingId(null);
     fetchData();
   }
@@ -129,6 +186,13 @@ export default function AdminPage() {
     setEditingId(item.id); setEditTitle(item.title); setEditDescription(item.description || '');
     setEditPlatform(item.platform); setEditStatus(item.status); setEditVisibility(item.visibility);
     setEditAdminNote(item.admin_note || ''); setEditUrl(item.url || '');
+    setEditTrack(item.track || 'idea');
+    setEditPhase(item.roadmap_phase || '');
+    setEditGoal(item.functional_goal || '');
+    setEditGroups(item.user_groups || []);
+    setEditSatPos(item.live_satisfaction_positive ?? 0);
+    setEditSatNeu(item.live_satisfaction_neutral ?? 0);
+    setEditSatNeg(item.live_satisfaction_negative ?? 0);
   }
 
   async function togglePlatformVisibility(platformId: string, currentVisible: boolean) {
@@ -146,6 +210,7 @@ export default function AdminPage() {
     }
     if (filterStatus !== 'all' && item.status !== filterStatus) return false;
     if (filterVisibility !== 'all' && item.visibility !== filterVisibility) return false;
+    if (filterTrack !== 'all' && item.track !== filterTrack) return false;
     return true;
   });
 
@@ -194,7 +259,7 @@ export default function AdminPage() {
               className="text-xs px-3 py-1 rounded-full" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
               🤖 Beheersessie
             </a>
-            <a href="/" className="text-sm underline" style={{ color: 'var(--primary)' }}>← Publieke pagina</a>
+            <Link href="/" className="text-sm underline" style={{ color: 'var(--primary)' }}>← Publieke pagina</Link>
           </div>
         </div>
         {/* Tabs */}
@@ -307,6 +372,12 @@ export default function AdminPage() {
                 <option value="public">Alleen public</option>
                 <option value="private">Alleen private</option>
               </select>
+              <select value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}
+                className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
+                <option value="all">Alle tracks</option>
+                <option value="roadmap">🚀 Innovaties</option>
+                <option value="idea">💡 Ideeën</option>
+              </select>
               <button onClick={() => setShowForm(!showForm)}
                 className="ml-auto rounded-md px-4 py-2 text-sm font-medium text-white"
                 style={{ background: 'var(--primary)' }}>
@@ -318,6 +389,19 @@ export default function AdminPage() {
               <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--bg-card)', borderColor: 'var(--primary-border)' }}>
                 <h2 className="text-lg mb-4">Nieuw item</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Track *</label>
+                    <div className="flex gap-3">
+                      {(['roadmap', 'idea'] as Track[]).map((t) => (
+                        <label key={t} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="radio" name="formTrack" value={t}
+                            checked={formTrack === t}
+                            onChange={() => setFormTrack(t)} />
+                          <span>{t === 'roadmap' ? '🚀 Innovatie (roadmap)' : '💡 Idee (gebruiker)'}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Titel *</label>
                     <input type="text" value={formTitle} onChange={(e) => setFormTitle(e.target.value)}
@@ -347,6 +431,42 @@ export default function AdminPage() {
                       <option value="private">Private</option>
                     </select>
                   </div>
+                  {formTrack === 'roadmap' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Roadmap-fase</label>
+                        <select value={formPhase} onChange={(e) => setFormPhase(e.target.value as RoadmapPhase)}
+                          className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
+                          {ROADMAP_PHASES.map((p) => (
+                            <option key={p} value={p}>{ROADMAP_PHASE_LABELS[p]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Functioneel doel</label>
+                        <input type="text" value={formGoal} onChange={(e) => setFormGoal(e.target.value)}
+                          placeholder="Wat heeft de gebruiker hieraan?"
+                          className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Doelgroepen</label>
+                        <div className="flex flex-wrap gap-3">
+                          {USER_GROUPS.map((g) => {
+                            const checked = formGroups.includes(g);
+                            return (
+                              <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" checked={checked}
+                                  onChange={() => {
+                                    setFormGroups(checked ? formGroups.filter((x) => x !== g) : [...formGroups, g]);
+                                  }} />
+                                <span>{USER_GROUP_LABELS[g]}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-end">
                     <button onClick={handleSubmit} disabled={submitting || !formTitle.trim()}
                       className="rounded-md px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
@@ -370,6 +490,17 @@ export default function AdminPage() {
                     }}>
                     {editingId === item.id ? (
                       <div className="space-y-3">
+                        <div className="flex gap-3 flex-wrap">
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Track:</span>
+                          {(['roadmap', 'idea'] as Track[]).map((t) => (
+                            <label key={t} className="flex items-center gap-1 text-xs cursor-pointer">
+                              <input type="radio" name={`editTrack-${item.id}`} value={t}
+                                checked={editTrack === t}
+                                onChange={() => setEditTrack(t)} />
+                              <span>{t === 'roadmap' ? '🚀 Innovatie' : '💡 Idee'}</span>
+                            </label>
+                          ))}
+                        </div>
                         <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                           className="w-full rounded-md border px-3 py-2 text-sm font-semibold" style={{ borderColor: 'var(--border)' }} />
                         <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2}
@@ -392,6 +523,68 @@ export default function AdminPage() {
                             <option value="public">Public</option>
                             <option value="private">Private</option>
                           </select>
+                        </div>
+                        {editTrack === 'roadmap' && (
+                          <div className="rounded-md p-3 space-y-3" style={{ background: 'rgba(128,0,0,0.04)', border: '1px solid var(--primary-border)' }}>
+                            <div className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>Roadmap-velden</div>
+                            <div className="flex flex-wrap gap-3 items-center">
+                              <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Fase:</label>
+                              <select value={editPhase} onChange={(e) => setEditPhase(e.target.value as RoadmapPhase)}
+                                className="rounded-md border px-2 py-1 text-sm" style={{ borderColor: 'var(--border)' }}>
+                                <option value="">— kies fase —</option>
+                                {ROADMAP_PHASES.map((p) => (
+                                  <option key={p} value={p}>{ROADMAP_PHASE_LABELS[p]}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)}
+                              placeholder="Functioneel doel — wat heeft de gebruiker hieraan?"
+                              className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                            <div>
+                              <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Doelgroepen:</div>
+                              <div className="flex flex-wrap gap-3">
+                                {USER_GROUPS.map((g) => {
+                                  const checked = editGroups.includes(g);
+                                  return (
+                                    <label key={g} className="flex items-center gap-1 text-xs cursor-pointer">
+                                      <input type="checkbox" checked={checked}
+                                        onChange={() => {
+                                          setEditGroups(checked ? editGroups.filter((x) => x !== g) : [...editGroups, g]);
+                                        }} />
+                                      <span>{USER_GROUP_LABELS[g]}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                                Tevredenheid bij gebruik (handmatige invoer; later vervangen door tool-API):
+                              </div>
+                              <div className="flex flex-wrap gap-3">
+                                <label className="flex items-center gap-1 text-xs">
+                                  <span>😀</span>
+                                  <input type="number" min={0} value={editSatPos}
+                                    onChange={(e) => setEditSatPos(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                                    className="rounded-md border px-2 py-1 text-xs w-20" style={{ borderColor: 'var(--border)' }} />
+                                </label>
+                                <label className="flex items-center gap-1 text-xs">
+                                  <span>😐</span>
+                                  <input type="number" min={0} value={editSatNeu}
+                                    onChange={(e) => setEditSatNeu(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                                    className="rounded-md border px-2 py-1 text-xs w-20" style={{ borderColor: 'var(--border)' }} />
+                                </label>
+                                <label className="flex items-center gap-1 text-xs">
+                                  <span>🙁</span>
+                                  <input type="number" min={0} value={editSatNeg}
+                                    onChange={(e) => setEditSatNeg(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                                    className="rounded-md border px-2 py-1 text-xs w-20" style={{ borderColor: 'var(--border)' }} />
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-3">
                           <button onClick={() => handleUpdate(item.id)}
                             className="rounded-md px-3 py-1 text-sm text-white" style={{ background: 'var(--success)' }}>Opslaan</button>
                           <button onClick={() => setEditingId(null)}
@@ -409,6 +602,18 @@ export default function AdminPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="text-base font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>{item.title}</h3>
+                            <span className="text-xs px-2 py-0.5 rounded-full"
+                              style={{
+                                background: item.track === 'roadmap' ? 'var(--primary)' : '#e5e7eb',
+                                color: item.track === 'roadmap' ? '#fff' : '#374151',
+                              }}>
+                              {item.track === 'roadmap' ? '🚀 Innovatie' : '💡 Idee'}
+                            </span>
+                            {item.track === 'roadmap' && item.roadmap_phase && (
+                              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                                {ROADMAP_PHASE_LABELS[item.roadmap_phase]}
+                              </span>
+                            )}
                             <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
                             {item.visibility === 'private' && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">🔒 Private</span>
